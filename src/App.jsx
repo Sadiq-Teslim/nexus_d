@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import HomePage from './pages/HomePage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 // import AdminPortal from './portals/AdminPortal.jsx';
@@ -9,16 +9,42 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userRole, setUserRole] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
+    const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
-    const path = window.location.pathname;
+    useEffect(() => {
+        const handlePopState = () => {
+            setCurrentPath(window.location.pathname);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    useEffect(() => {
+        if (!isAuthenticated && currentPath === '/manager') {
+            const redirectUrl = '/auth?view=signin';
+            if (window.location.pathname !== '/auth') {
+                window.history.replaceState(null, '', redirectUrl);
+            }
+            setCurrentPath('/auth');
+        }
+    }, [isAuthenticated, currentPath]);
 
     const handleAuthSuccess = (userData) => {
         if (!userData) {
             return;
         }
         setUserProfile(userData);
-        setUserRole(userData.role || null);
+        const role = userData.role || null;
+        setUserRole(role);
         setIsAuthenticated(true);
+
+        if (role === 'manager') {
+            if (window.location.pathname !== '/manager') {
+                window.history.replaceState(null, '', '/manager');
+            }
+            setCurrentPath('/manager');
+        }
     };
 
     const handleLogout = () => {
@@ -28,6 +54,7 @@ function App() {
         if (window.location.pathname !== '/') {
             window.history.replaceState(null, '', '/');
         }
+        setCurrentPath('/');
     };
 
     // --- MAIN RENDER LOGIC ---
@@ -46,8 +73,8 @@ function App() {
     }
     
     // If not authenticated, show public pages based on URL
-    if (path === '/auth') {
-        return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+    if (currentPath === '/auth' || currentPath === '/manager') {
+        return <AuthPage key={currentPath} onAuthSuccess={handleAuthSuccess} />;
     }
 
     // Default to the homepage
