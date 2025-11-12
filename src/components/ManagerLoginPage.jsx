@@ -13,7 +13,7 @@ const ManagerLoginPage = ({ onLoginSuccess }) => {
     return (
         <div className="manager-login-container">
             <div className="login-card">
-                <h2>Nexus Disrupt</h2>
+                <h2>Nexus Disrupt™</h2>
                 <p className="login-subtitle">Fraud Manager Portal</p>
                 <form onSubmit={handleLoginSubmit}>
                     <div className="input-group">

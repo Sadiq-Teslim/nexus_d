@@ -1,6 +1,22 @@
 // src/services/mockApiService.js
 
-// This file is our FAKE backend. It simulates all backend operations.
+export const MOCK_CCN_REPORT = `
+**COGNITIVE COMPLIANCE NARRATIVE (CCN™) - CONFIDENTIAL**
+
+**INCIDENT ID:** TXN_FRAUD_030
+**DATE:** ${new Date().toLocaleDateString()}
+**STATUS:** URGENT - MICRO-FREEZE RECOMMENDED
+
+**1. EXECUTIVE SUMMARY:**
+The Agentic AI has detected a high-confidence money laundering network pattern culminating in an exit transaction of NGN 1,500,000 to account ACC_EXIT_POINT. The structural velocity and coordinated timing of the 30 preceding transactions indicate a sophisticated, organized attempt to obscure fund origins, consistent with established money mule typologies (CBN AML/CFT Section 4.2).
+
+**2. COGNITIVE DIGITAL TWIN (CDT) ANALYSIS:**
+*   **Regulatory Penalty Value (RPV):** NGN 850,000,000 (Estimated fine if network is not disrupted)
+*   **Reputational Damage Score (RDS):** 9.2/10 (High risk of public trust erosion)
+
+**3. JUSTIFICATION FOR ACTION:**
+Immediate action is mandated under regulatory guidelines to prevent capital flight and mitigate institutional risk. The GNN has identified ACC_EXIT_POINT as the terminal node with 99% certainty. A Micro-Freeze is the minimum required action to preserve assets pending formal investigation.
+`;
 
 // --- 1. Generate the Mock Data ---
 const generateMockData = () => {
@@ -8,7 +24,7 @@ const generateMockData = () => {
   const FRAUD_DEVICE_ID = "DEVICE_FRAUD_XYZ_123";
   const MULE_ACCOUNTS = Array.from({ length: 10 }, (_, i) => `ACC_MULE_${String(i + 1).padStart(3, '0')}`);
 
-  // Create the Fraud Chain (30 transactions)
+  // --- MODIFIED: Create the Fraud Chain with CDT Data ---
   let lastMule = MULE_ACCOUNTS[0];
   for (let i = 0; i < 29; i++) {
     const nextMule = MULE_ACCOUNTS[(i + 1) % MULE_ACCOUNTS.length];
@@ -22,6 +38,10 @@ const generateMockData = () => {
       status: "HIGH RISK",
       is_fraud_network: true,
       deviceFingerprint: FRAUD_DEVICE_ID,
+      cdt: { // <-- NEW CDT DATA
+          regulatoryPenaltyValue: 850000000,
+          reputationalDamageScore: 9.2,
+      }
     });
     lastMule = nextMule;
   }
@@ -35,9 +55,13 @@ const generateMockData = () => {
     status: "HIGH RISK",
     is_fraud_network: true,
     deviceFingerprint: FRAUD_DEVICE_ID,
+    cdt: { // <-- NEW CDT DATA
+        regulatoryPenaltyValue: 850000000,
+        reputationalDamageScore: 9.2,
+    }
   });
 
-  // Create Legitimate Transactions (170 transactions)
+  // --- Legitimate Transactions (no changes here) ---
   for (let i = 0; i < 290; i++) {
     transactions.push({
       id: `TXN_LEGIT_${String(i + 1).padStart(3, '0')}`,
@@ -51,8 +75,6 @@ const generateMockData = () => {
       deviceFingerprint: `DEVICE_LEGIT_${String(i).padStart(3, '0')}`,
     });
   }
-
-  // Sort by timestamp to simulate a real feed
   return transactions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 };
 
@@ -112,3 +134,50 @@ export const releaseFunds = (transactionId) => {
     }, 500);
   });
 }
+
+/**
+ * Simulates an FI Admin signing up their institution.
+ * In a real app, this would create a new institution and an admin user in the database.
+ * @param {object} signupData - Contains bankName, adminEmail, password.
+ * @returns {Promise<object>} A promise that resolves with the new admin user object.
+ */
+export const signUpInstitution = (signupData) => {
+    return new Promise(resolve => {
+        // Simulate a 5-second verification/creation delay
+        setTimeout(() => {
+            console.log("MOCK API: Institution signup successful for:", signupData.bankName);
+            const adminUser = {
+                email: signupData.adminEmail,
+                role: 'admin',
+                institution: signupData.bankName
+            };
+            // In a real app, we'd also return a JWT token here.
+            resolve(adminUser);
+        }, 5000); // 5-second delay to match the spinner
+    });
+};
+
+/**
+ * Simulates a Fraud Manager logging in.
+ * In a real app, this would check credentials against the database.
+ * @param {object} loginData - Contains email, password.
+ * @returns {Promise<object>} A promise that resolves with the manager user object.
+ */
+export const loginManager = (loginData) => {
+    return new Promise((resolve, reject) => {
+        // Simulate a short network delay for login
+        setTimeout(() => {
+            // For the hackathon, we'll accept any login as valid
+            if (loginData.email && loginData.password) {
+                console.log("MOCK API: Manager login successful for:", loginData.email);
+                const managerUser = {
+                    email: loginData.email,
+                    role: 'manager'
+                };
+                resolve(managerUser);
+            } else {
+                reject(new Error("Invalid credentials"));
+            }
+        }, 1000);
+    });
+};

@@ -86,7 +86,7 @@ const LandingPage = ({ onSignupSuccess }) => {
             <header className="hero">
                 <div className="hero-inner">
                     <div className="hero-copy">
-                        <span className="hero-badge">Enterprise SaaS · Nexus Disrupt</span>
+                        <span className="hero-badge">Enterprise SaaS · Nexus Disrupt™</span>
                         <h1>
                             Disrupt <span>money-mule fraud</span> before it settles
                         </h1>
@@ -153,7 +153,7 @@ const LandingPage = ({ onSignupSuccess }) => {
                         <span className="section-eyebrow">Platform strengths</span>
                         <h2>Purpose-built for enterprise fraud command centers</h2>
                         <p>
-                            From POS to mobile to trade finance, Nexus Disrupt aligns with governance, incident playbooks,
+                            From POS to mobile to trade finance, Nexus Disrupt™ aligns with governance, incident playbooks,
                             and cross-channel visibility so every team works off the same truth.
                         </p>
                     </div>
@@ -204,7 +204,7 @@ const LandingPage = ({ onSignupSuccess }) => {
                         <span className="section-eyebrow">Impact</span>
                         <h2>Safeguard customer trust across every payment corridor</h2>
                         <p>
-                            The Nexus Disrupt agentic loop counters organized mule rings by combining autonomous action
+                            The Nexus Disrupt™ agentic loop counters organized mule rings by combining autonomous action
                             with human oversight. Every corridor, from retail transfers to corporate deals, benefits from
                             faster detection and decisive response.
                         </p>

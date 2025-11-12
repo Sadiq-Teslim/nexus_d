@@ -56,7 +56,7 @@ const HomePage = () => {
                                 Stop Financial Crime Before It Starts
                             </h1>
                             <p className="mt-6 text-lg text-white/80 sm:text-xl">
-                                Nexus Disrupt delivers autonomous monitoring, network analysis, and immediate freeze actions in one trusted platform. Protect customer funds with measurable certainty.
+                                Nexus Disrupt™ delivers autonomous monitoring, network analysis, and immediate freeze actions in one trusted platform. Protect customer funds with measurable certainty.
                             </p>
                             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row" data-animate="fade">
                                 <a
@@ -173,7 +173,7 @@ const HomePage = () => {
                             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-zenithRed/90">Executive Controls</p>
                             <h2 className="text-3xl font-bold sm:text-4xl">Governance-Led, Regulator Ready</h2>
                             <p className="text-lg text-white/80">
-                                Nexus Disrupt underpins every intervention with immutable audit trails, board-ready dashboards, and clear escalation paths. Your teams gain surgical clarity, while stakeholders receive concise, defensible reporting.
+                                Nexus Disrupt™ underpins every intervention with immutable audit trails, board-ready dashboards, and clear escalation paths. Your teams gain surgical clarity, while stakeholders receive concise, defensible reporting.
                             </p>
                             <div className="grid gap-6 sm:grid-cols-2">
                                 <div className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-xl backdrop-blur-xl transition-transform duration-700 hover:-translate-y-1 hover:border-white/30">
@@ -272,7 +272,7 @@ const HomePage = () => {
 
             <footer className="relative z-10 border-t border-white/10 bg-black/40 backdrop-blur-xl">
                 <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-white/60 sm:flex-row sm:items-center sm:justify-between">
-                    <span>&copy; {new Date().getFullYear()} Nexus Disrupt. All rights reserved.</span>
+                    <span>&copy; {new Date().getFullYear()} Nexus Disrupt™. All rights reserved.</span>
                     <div className="flex gap-6">
                         <a href="#" className="hover:text-white">Privacy</a>
                         <a href="#" className="hover:text-white">Terms</a>

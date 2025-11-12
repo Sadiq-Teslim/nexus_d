@@ -74,7 +74,7 @@ const AdminPortal = ({ onLogout }) => {
         <div className="portal-layout">
             <nav className="sidebar">
                 <div className="sidebar-header">
-                    <h3>Nexus Disrupt</h3>
+                    <h3>Nexus Disrupt™</h3>
                     <p>Administrator Portal</p>
                 </div>
                 <ul>

@@ -2,40 +2,52 @@
 import React, { useState } from 'react';
 import HomePage from './pages/HomePage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
-// Import portals as before
 // import AdminPortal from './portals/AdminPortal.jsx';
-// import ManagerPortal from './portals/ManagerPortal.jsx';
+import ManagerPortal from './portals/ManagerPortal.jsx';
 
 function App() {
-    // This state would be managed more robustly (e.g., with Context) in a real app
-    const [isAuthenticated, setIsAuthenticated] = useState(false); 
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userRole, setUserRole] = useState(null);
+    const [userProfile, setUserProfile] = useState(null);
 
     const path = window.location.pathname;
 
-    // This simulates what would happen after a successful login API call
-    const handleLogin = (role) => {
+    const handleAuthSuccess = (userData) => {
+        if (!userData) {
+            return;
+        }
+        setUserProfile(userData);
+        setUserRole(userData.role || null);
         setIsAuthenticated(true);
-        setUserRole(role);
+    };
+
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+        setUserRole(null);
+        setUserProfile(null);
+        if (window.location.pathname !== '/') {
+            window.history.replaceState(null, '', '/');
+        }
     };
 
     // --- MAIN RENDER LOGIC ---
-
-    // If the user is authenticated, show them the correct portal
     if (isAuthenticated) {
         if (userRole === 'admin') {
-            // return <AdminPortal ... />
-            return <div><h1>Welcome Admin!</h1></div>;
+            return (
+                <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center gap-4">
+                    <h1 className="text-3xl font-semibold">Welcome Admin!</h1>
+                    <p className="text-slate-300">{userProfile?.institution} is now onboarded. Explore your dashboard.</p>
+                </div>
+            );
         }
         if (userRole === 'manager') {
-            // return <ManagerPortal ... />
-            return <div><h1>Welcome Manager!</h1></div>;
+            return <ManagerPortal user={userProfile} onLogout={handleLogout} />;
         }
     }
     
     // If not authenticated, show public pages based on URL
     if (path === '/auth') {
-        return <AuthPage />; // onLogin={handleLogin} would be passed here
+        return <AuthPage onAuthSuccess={handleAuthSuccess} />;
     }
 
     // Default to the homepage

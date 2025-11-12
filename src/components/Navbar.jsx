@@ -8,7 +8,7 @@ const Navbar = () => {
                 <div className="mt-4 flex items-center justify-between rounded-full border border-white/20 bg-white/10 px-4 py-3 text-white shadow-lg shadow-black/20 backdrop-blur-xl transition duration-500 hover:border-white/40">
                     <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-white/40 to-white/20 text-lg font-semibold text-[#30050c] shadow-sm">ND</span>
-                        <a href="/" className="text-lg font-semibold tracking-wide text-white drop-shadow sm:text-xl">Nexus Disrupt</a>
+                        <a href="/" className="text-lg font-semibold tracking-wide text-white drop-shadow sm:text-xl">Nexus Disrupt™</a>
                     </div>
                     <nav className="hidden items-center gap-8 text-sm font-medium text-white/80 md:flex">
                         <a href="#how-it-works" className="transition duration-300 hover:text-white">How It Works</a>
