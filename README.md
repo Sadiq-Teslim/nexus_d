@@ -27,6 +27,7 @@ Nexus Disrupt is an interactive fraud-disruption console for financial instituti
 - React Flow 11 for interactive graph visualisations
 - Lucide React for iconography
 - ESLint 9 with React hooks and refresh plugins
+- Optional AI agent integration: [Nexus Disrupt AI Agent](https://github.com/ayreact/Nexus-Disrupt-AI-agent)
 
 ## Getting Started
 
@@ -93,6 +94,10 @@ The application uses generated datasets to simulate fraud networks and complianc
 - `MOCK_CCN_REPORT` – sample compliance narrative used in the case review modal.
 
 These mocks are synchronous simulations and can be replaced with real endpoints when integrating with production systems.
+
+### Connecting the external AI agent
+
+The UI calls the companion model at [ayreact/Nexus-Disrupt-AI-agent](https://github.com/ayreact/Nexus-Disrupt-AI-agent) to surface GNN scores, compliance narratives, and other AI signals. When the agent is running, it points to the service layer in `src/services` at its endpoints to replace the local mocks.
 
 ## Contributing & Next Steps
 
