@@ -1,5 +1,5 @@
 // src/portals/AdminPortal.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import logo from "../assets/nobglogo.png";
 import {
   Plus,
@@ -293,56 +293,76 @@ const AdminDashboard = () => {
 };
 
 const BillingPage = () => {
-  const plans = [
-    {
-      name: "Standard",
-      price: 5000000,
-      credits: 15000,
-      roi: "4X ROI",
-      color: "border-slate-400",
-    },
-    {
-      name: "Premier",
-      price: 10000000,
-      credits: 35000,
-      roi: "6X ROI",
-      color: "border-blue-500",
-    },
-    {
-      name: "Enterprise",
-      price: 25000000,
-      credits: 100000,
-      roi: "11X ROI",
-      color: "border-red-600",
-    },
-  ];
-  const currentCredits = 28500;
-  const creditHistory = [
+  const baseAnnualPrice = 10000000;
+  const [years, setYears] = useState(1);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [licenseRemainingMonths, setLicenseRemainingMonths] = useState(22);
+
+  const calculateQuote = (commitmentYears) => {
+    const subtotal = baseAnnualPrice * commitmentYears;
+    const discountRate =
+      commitmentYears > 1 ? Math.min((commitmentYears - 1) * 0.1, 0.3) : 0;
+    const discountAmount = subtotal * discountRate;
+    const total = subtotal - discountAmount;
+    return {
+      years: commitmentYears,
+      subtotal,
+      discountAmount,
+      discountRate,
+      total,
+    };
+  };
+
+  const [quote, setQuote] = useState(() => calculateQuote(1));
+
+  const plans = {
+    name: "Enterprise License",
+    pricePerYear: baseAnnualPrice,
+    description:
+      "Unlimited Nexus Disrupt™ coverage, dedicated analyst support, and 24/7 incident response.",
+    roi: "Up to 30% savings",
+    color: "border-slate-400",
+  };
+
+  const licensingHistory = [
     {
       date: "2025-10-01",
-      transaction: "Premier Plan Purchase",
-      amount: NGN_FORMAT.format(10000000),
-      credits: "+35,000",
+      transaction: "Enterprise License Purchase",
+      term: "3 Years",
+      discount: "20%",
+      amount: NGN_FORMAT.format(24000000),
+      status: "Active",
     },
     {
-      date: "2025-11-01",
-      transaction: "GNN Usage - Auto Debit",
-      amount: "N/A",
-      credits: "-1,500",
+      date: "2025-11-05",
+      transaction: "Quarterly Performance Review",
+      term: "Included",
+      discount: "N/A",
+      amount: NGN_FORMAT.format(0),
+      status: "Completed",
     },
     {
-      date: "2025-11-02",
-      transaction: "GNN Usage - Auto Debit",
-      amount: "N/A",
-      credits: "-820",
-    },
-    {
-      date: "2025-11-03",
-      transaction: "GNN Usage - Auto Debit",
-      amount: "N/A",
-      credits: "-940",
+      date: "2025-12-01",
+      transaction: "Projected Renewal Reminder",
+      term: "1 Year",
+      discount: "10%",
+      amount: NGN_FORMAT.format(18000000),
+      status: "Scheduled",
     },
   ];
+
+  const handleIncreaseYears = () => {
+    const nextYears = years + 1;
+    const nextQuote = calculateQuote(nextYears);
+    setYears(nextYears);
+    setQuote(nextQuote);
+    setShowQuoteModal(true);
+  };
+
+  const handleResetYears = () => {
+    setYears(1);
+    setQuote(calculateQuote(1));
+  };
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-slate-900">
@@ -350,22 +370,22 @@ const BillingPage = () => {
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <KpiCard
-          title="Current Credit Balance"
-          value={`${currentCredits.toLocaleString()}`}
-          subtitle={`Value: ${NGN_FORMAT.format(28500 * (25000000 / 100000))}`}
+          title="Annual License Fee"
+          value={NGN_FORMAT.format(baseAnnualPrice)}
+          subtitle="Base price per administrative year"
           icon={Wallet}
           colorClass="text-red-600"
         />
         <KpiCard
-          title="Credits Consumed MTD"
-          value="12,500"
-          subtitle="Transactions Analyzed"
-          icon={Zap}
+          title="Committed Years"
+          value={`${quote.years}`}
+          subtitle="Multi-year savings activated"
+          icon={ShieldCheck}
         />
         <KpiCard
-          title="Billing Cycle Status"
-          value="28 Days Left"
-          subtitle="Premier Plan"
+          title="Discount Applied"
+          value={`${(quote.discountRate * 100).toFixed(0)}%`}
+          subtitle="Automatic multi-year discount"
           icon={TrendingUp}
           colorClass="text-blue-600"
         />
@@ -375,31 +395,133 @@ const BillingPage = () => {
           API Credit Purchase Plans
         </h3>
         <div className="grid md:grid-cols-3 gap-6 mt-6">
-          {plans.map((plan) => (
             <div
-              key={plan.name}
-              className={`rounded-2xl border-4 ${plan.color} bg-slate-50 p-8 shadow-xl text-center flex flex-col`}
+              key={plans.name}
+              className={`rounded-2xl border-4 ${plans.color} bg-slate-50 p-8 shadow-xl text-center flex flex-col`}
             >
               <h4 className="text-3xl font-extrabold mb-2 text-slate-800">
-                {plan.name}
+                {plans.name}
               </h4>
               <p className="text-lg font-semibold text-red-600 mb-4">
-                {NGN_FORMAT.format(plan.price)} / Year
+                {NGN_FORMAT.format(plans.pricePerYear)} / Year
               </p>
-              <p className="text-5xl font-extrabold text-slate-900">
-                {plan.credits.toLocaleString()}
+              <p className="text-sm text-slate-600 mb-6">
+                {plans.description}
               </p>
-              <p className="text-lg font-medium text-slate-500 mb-6">
-                GNN Analysis Credits
-              </p>
-              <div className="bg-red-100 text-red-700 py-1 rounded-full mb-6 text-xs font-semibold">
-                {plan.roi} Guaranteed
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 text-left space-y-3 mb-6">
+                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
+                  <span>Committed Years</span>
+                  <span className="text-slate-900 font-semibold">
+                    {quote.years} {quote.years > 1 ? "Years" : "Year"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
+                  <span>Base Cost</span>
+                  <span className="text-slate-900 font-semibold">
+                    {NGN_FORMAT.format(quote.subtotal)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
+                  <span>Discount</span>
+                  <span className="text-red-600 font-semibold">
+                    {(quote.discountRate * 100).toFixed(0)}% (
+                    {NGN_FORMAT.format(quote.discountAmount)})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
+                  <span>Projected Total</span>
+                  <span className="text-slate-900 font-bold">
+                    {NGN_FORMAT.format(quote.total)}
+                  </span>
+                </div>
               </div>
-              <button className="w-full mt-auto bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors">
+              <div className="bg-red-100 text-red-700 py-1 rounded-full mb-6 text-xs font-semibold">
+                {plans.roi}
+              </div>
+              <button
+                onClick={handleIncreaseYears}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors"
+              >
+                Add Year & Recalculate
+              </button>
+              <button className="w-full mt-3 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-colors">
                 Purchase Now
               </button>
+              {years > 1 && (
+                <button
+                  onClick={handleResetYears}
+                  className="mt-4 text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
+                >
+                  Reset to single-year commitment
+                </button>
+              )}
             </div>
-          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg p-6">
+          <h3 className="text-lg font-semibold text-slate-800">
+            License Term Remaining
+          </h3>
+          <p className="text-sm text-slate-500 mt-2">
+            Use the slider to track how much time is left on your active
+            licensing term.
+          </p>
+          <div className="flex items-center gap-4 mt-6">
+            <input
+              type="range"
+              min="0"
+              max="60"
+              step="1"
+              value={licenseRemainingMonths}
+              onChange={(e) =>
+                setLicenseRemainingMonths(parseInt(e.target.value, 10))
+              }
+              className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-600 accent-red-600"
+            />
+            <span className="font-bold text-red-600 w-20 text-right">
+              {licenseRemainingMonths} mo
+            </span>
+          </div>
+          <div className="flex justify-between text-xs text-slate-400 uppercase mt-3 font-semibold">
+            <span>Newly Activated</span>
+            <span>Renewal Due</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-4">
+            Approx. {(licenseRemainingMonths / 12).toFixed(1)} years remaining
+            on your license commitment.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg p-6">
+          <h3 className="text-lg font-semibold text-slate-800">
+            Licensing Summary
+          </h3>
+          <ul className="mt-4 space-y-3 text-sm text-slate-600">
+            <li className="flex items-center justify-between">
+              <span>Active Contract Value</span>
+              <span className="font-semibold text-slate-900">
+                {NGN_FORMAT.format(quote.total)}
+              </span>
+            </li>
+            <li className="flex items-center justify-between">
+              <span>Discount Secured</span>
+              <span className="font-semibold text-red-600">
+                {(quote.discountRate * 100).toFixed(0)}%
+              </span>
+            </li>
+            <li className="flex items-center justify-between">
+              <span>Next Review Checkpoint</span>
+              <span className="font-semibold text-slate-900">
+                2025-12-15
+              </span>
+            </li>
+            <li className="flex items-center justify-between">
+              <span>Relationship Manager</span>
+              <span className="font-semibold text-slate-900">
+                adeola.ogunleye@nexusdisrupt.com
+              </span>
+            </li>
+          </ul>
         </div>
       </div>
       <div>
@@ -417,15 +539,21 @@ const BillingPage = () => {
                   Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  Financial Impact
+                  Term
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  Credit Change
+                  Discount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Status
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {creditHistory.map((item, index) => (
+              {licensingHistory.map((item, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                     {item.date}
@@ -434,16 +562,24 @@ const BillingPage = () => {
                     {item.transaction}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                    {item.term}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
+                    {item.discount}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
                     {item.amount}
                   </td>
                   <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
-                      item.credits.startsWith("+")
+                    className={`px-6 py-4 whitespace-nowrap text-sm font-semibold ${
+                      item.status === "Active"
                         ? "text-green-600"
-                        : "text-red-600"
+                        : item.status === "Scheduled"
+                        ? "text-red-600"
+                        : "text-slate-500"
                     }`}
                   >
-                    {item.credits}
+                    {item.status}
                   </td>
                 </tr>
               ))}
@@ -451,6 +587,64 @@ const BillingPage = () => {
           </table>
         </div>
       </div>
+      {showQuoteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowQuoteModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <h3 className="text-2xl font-bold text-slate-900">
+                Updated Licensing Quote
+              </h3>
+              <button
+                onClick={() => setShowQuoteModal(false)}
+                className="text-slate-400 hover:text-red-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="mt-6 space-y-4 text-sm text-slate-600">
+              <div className="flex items-center justify-between">
+                <span>Years Committed</span>
+                <span className="font-semibold text-slate-900">
+                  {quote.years} {quote.years > 1 ? "Years" : "Year"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Base Cost</span>
+                <span className="font-semibold text-slate-900">
+                  {NGN_FORMAT.format(quote.subtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Discount Applied</span>
+                <span className="font-semibold text-red-600">
+                  {(quote.discountRate * 100).toFixed(0)}% (
+                  {NGN_FORMAT.format(quote.discountAmount)})
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Total Payable</span>
+                <span className="text-red-600 font-bold text-lg">
+                  {NGN_FORMAT.format(quote.total)}
+                </span>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowQuoteModal(false)}
+                className="rounded-full px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
