@@ -18,7 +18,7 @@ The Agentic AI has detected a high-confidence money laundering network pattern c
 Immediate action is mandated under regulatory guidelines to prevent capital flight and mitigate institutional risk. The GNN has identified ACC_EXIT_POINT as the terminal node with 99% certainty. A Micro-Freeze is the minimum required action to preserve assets pending formal investigation.
 `;
 
-// --- 1. Generate the Mock Data ---
+// --- 1. Generate sample data ---
 const generateMockData = () => {
   const transactions = [];
   const FRAUD_DEVICE_ID = "DEVICE_FRAUD_XYZ_123";
@@ -80,7 +80,7 @@ const generateMockData = () => {
 
 let allTransactions = generateMockData();
 
-// --- 2. Create the Mock API Functions ---
+// --- 2. Create the demo API functions ---
 
 // Simulates fetching all transactions
 export const fetchTransactions = () => {
@@ -98,7 +98,7 @@ export const triggerMicroFreeze = (transactionId) => {
       const transactionIndex = allTransactions.findIndex(t => t.id === transactionId);
       if (transactionIndex !== -1) {
         allTransactions[transactionIndex].status = "FROZEN";
-        console.log(`MOCK API: Transaction ${transactionId} has been FROZEN.`);
+  console.log(`API: Transaction ${transactionId} has been FROZEN.`);
         resolve(allTransactions[transactionIndex]);
       } else {
         reject(new Error("Transaction not found"));
@@ -114,7 +114,7 @@ export const authorizeHold = (transactionId) => {
       const transactionIndex = allTransactions.findIndex(t => t.id === transactionId);
       if (transactionIndex !== -1) {
         allTransactions[transactionIndex].status = "AUTHORIZED HOLD";
-        console.log(`MOCK API: Transaction ${transactionId} is now AUTHORIZED HOLD.`);
+  console.log(`API: Transaction ${transactionId} is now AUTHORIZED HOLD.`);
         resolve(allTransactions[transactionIndex]);
       }
     }, 500);
@@ -128,7 +128,7 @@ export const releaseFunds = (transactionId) => {
       const transactionIndex = allTransactions.findIndex(t => t.id === transactionId);
       if (transactionIndex !== -1) {
         allTransactions[transactionIndex].status = "OK"; // Revert status
-        console.log(`MOCK API: Transaction ${transactionId} funds have been RELEASED.`);
+  console.log(`API: Transaction ${transactionId} funds have been RELEASED.`);
         resolve(allTransactions[transactionIndex]);
       }
     }, 500);
@@ -145,7 +145,7 @@ export const signUpInstitution = (signupData) => {
     return new Promise(resolve => {
         // Simulate a 5-second verification/creation delay
         setTimeout(() => {
-            console.log("MOCK API: Institution signup successful for:", signupData.bankName);
+            console.log("API: Institution signup successful for:", signupData.bankName);
             const adminUser = {
                 email: signupData.adminEmail,
                 role: 'admin',
@@ -169,7 +169,7 @@ export const loginManager = (loginData) => {
         setTimeout(() => {
             // For the hackathon, we'll accept any login as valid
             if (loginData.email && loginData.password) {
-                console.log("MOCK API: Manager login successful for:", loginData.email);
+                console.log("API: Manager login successful for:", loginData.email);
                 const managerUser = {
                     email: loginData.email,
                     role: 'manager'

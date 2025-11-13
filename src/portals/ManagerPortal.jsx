@@ -27,7 +27,7 @@ import {
 import PortalNavbar from "../components/PortalNavbar.jsx";
 import "./ManagerPortal.css";
 
-// --- UTILITY & REUSABLE UI ---
+// Utility & reusable UI components
 
 const formatRelativeTime = (input) => {
   const timestamp = new Date(input).getTime();
@@ -93,7 +93,7 @@ const NavItem = ({ icon, text, isExpanded, active = false, onClick }) => (
   </li>
 );
 
-// --- GRAPH & PAGE COMPONENTS ---
+// Graph & page components
 
 // 1. GNN Graph Component
 const GNNGraph = ({ nodes, edges }) => (
@@ -544,6 +544,13 @@ const OperationalDashboard = ({ onViewDetails }) => {
 const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
   const [cases, setCases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPageCases, setCurrentPageCases] = useState(1);
+  const PAGE_SIZE_CASES = 8;
+  useEffect(() => { setCurrentPageCases(1); }, [cases]);
+  const totalPagesCases = Math.max(1, Math.ceil(cases.length / PAGE_SIZE_CASES));
+  const startCase = (currentPageCases - 1) * PAGE_SIZE_CASES;
+  const endCase = startCase + PAGE_SIZE_CASES;
+  const paginatedCases = cases.slice(startCase, endCase);
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
@@ -594,7 +601,7 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
             No active incidents require review. The network is stable.
           </div>
         ) : (
-          cases.map((item) => (
+          paginatedCases.map((item) => (
             <button
               key={item.id}
               onClick={() => onSelectCase?.(item)}
@@ -637,6 +644,14 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
               </div>
             </button>
           ))
+        )}
+        {/* pagination controls for queue */}
+        {cases.length > PAGE_SIZE_CASES && (
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button onClick={() => setCurrentPageCases(prev => Math.max(prev - 1, 1))} disabled={currentPageCases === 1} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageCases === 1 ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Previous</button>
+            <span className="text-xs text-gray-400">Page {currentPageCases} of {totalPagesCases}</span>
+            <button onClick={() => setCurrentPageCases(prev => Math.min(prev + 1, totalPagesCases))} disabled={currentPageCases === totalPagesCases} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageCases === totalPagesCases ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Next</button>
+          </div>
         )}
       </div>
     </div>
@@ -1039,6 +1054,8 @@ const NexusMapVisualizer = ({ refreshToken }) => {
 const AuditLogsPage = ({ refreshToken }) => {
   const [logs, setLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPageLogs, setCurrentPageLogs] = useState(1);
+  const PAGE_SIZE_LOGS = 20;
   useEffect(() => {
     let mounted = true;
     fetchTransactions().then((data) => {
@@ -1072,6 +1089,12 @@ const AuditLogsPage = ({ refreshToken }) => {
     if (!query) return logs;
     return logs.filter((log) => log.description.toLowerCase().includes(query));
   }, [logs, searchTerm]);
+  const totalPagesLogs = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE_LOGS));
+  useEffect(() => {
+    if (currentPageLogs > totalPagesLogs) setCurrentPageLogs(totalPagesLogs);
+  }, [currentPageLogs, totalPagesLogs]);
+  useEffect(() => { setCurrentPageLogs(1); }, [filteredLogs]);
+  const paginatedLogs = filteredLogs.slice((currentPageLogs - 1) * PAGE_SIZE_LOGS, currentPageLogs * PAGE_SIZE_LOGS);
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -1101,12 +1124,12 @@ const AuditLogsPage = ({ refreshToken }) => {
         </div>
       </div>
       <div className="space-y-3">
-        {filteredLogs.length === 0 ? (
+        {paginatedLogs.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center text-sm text-white/60">
             No log entries match your criteria.
           </div>
         ) : (
-          filteredLogs.map((log) => (
+          paginatedLogs.map((log) => (
             <div
               key={log.id}
               className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -1122,6 +1145,14 @@ const AuditLogsPage = ({ refreshToken }) => {
               </span>
             </div>
           ))
+        )}
+        {/* pagination controls for audit logs */}
+        {filteredLogs.length > PAGE_SIZE_LOGS && (
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button onClick={() => setCurrentPageLogs(p => Math.max(p - 1, 1))} disabled={currentPageLogs === 1} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageLogs === 1 ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Previous</button>
+            <span className="text-xs text-gray-400">Page {currentPageLogs} of {totalPagesLogs}</span>
+            <button onClick={() => setCurrentPageLogs(p => Math.min(p + 1, totalPagesLogs))} disabled={currentPageLogs === totalPagesLogs} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageLogs === totalPagesLogs ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Next</button>
+          </div>
         )}
       </div>
     </div>

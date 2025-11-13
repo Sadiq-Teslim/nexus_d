@@ -3,8 +3,9 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { MOCK_CCN_REPORT } from '../services/mockApiService';
 
-const CaseReviewModal = ({ transaction, onClose, onAuthorize, onRelease }) => {
-    if (!transaction) return null;
+const CaseReviewModal = ({ open, caseData, transaction: transactionProp, onClose, onAuthorize, onRelease, isProcessing, errorMessage }) => {
+    const transaction = caseData || transactionProp;
+    if (!open || !transaction) return null;
     const cdt = transaction.cdt || { regulatoryPenaltyValue: 0, reputationalDamageScore: 0 };
 
     return (
@@ -21,9 +22,9 @@ const CaseReviewModal = ({ transaction, onClose, onAuthorize, onRelease }) => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="space-y-6">
                             <div>
-                                <h3 className="font-semibold text-gray-300 mb-2 text-sm uppercase tracking-wider">Stage 2: GNN Detection & Mapping</h3>
+                                <h3 className="font-semibold text-gray-300 mb-2 text-sm uppercase tracking-wider">Stage 1: GNN Detection & Mapping</h3>
                                 <div className="aspect-video bg-black rounded-lg border border-white/10 flex items-center justify-center">
-                                    <p className="text-gray-500">Nexus Map Visualizer Placeholder</p>
+                                    <p className="text-gray-500">Transaction network visualization</p>
                                 </div>
                             </div>
                             <div>
@@ -48,11 +49,11 @@ const CaseReviewModal = ({ transaction, onClose, onAuthorize, onRelease }) => {
                         </div>
                     </div>
                 </main>
-                <footer className="flex justify-end items-center gap-4 border-t border-white/10 p-6 shrink-0">
-                     <p className="text-sm text-gray-500 mr-auto">Action is final and will be logged.</p>
-                     <button onClick={() => onRelease(transaction.id)} className="px-6 py-2 rounded-lg bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">Release Funds</button>
-                     <button onClick={() => onAuthorize(transaction.id)} className="px-8 py-2 rounded-lg bg-zenithRed text-white font-semibold hover:brightness-110 transition-all shadow-lg shadow-zenithRed/30">Authorize Formal Hold</button>
-                </footer>
+             <footer className="flex justify-end items-center gap-4 border-t border-white/10 p-6 shrink-0">
+                 <p className="text-sm text-gray-500 mr-auto">Action is final and will be logged.</p>
+                 <button onClick={() => onRelease(transaction.id)} disabled={isProcessing} className="px-6 py-2 rounded-lg bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">Release Funds</button>
+                 <button onClick={() => onAuthorize(transaction.id)} disabled={isProcessing} className="px-8 py-2 rounded-lg bg-zenithRed text-white font-semibold hover:brightness-110 transition-all shadow-lg shadow-zenithRed/30">{isProcessing ? 'Processing…' : 'Authorize Formal Hold'}</button>
+             </footer>
             </div>
         </div>
     );

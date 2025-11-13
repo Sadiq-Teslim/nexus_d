@@ -8,9 +8,10 @@ export default function useNavbar({ initialTitle = 'Operational Dashboard', init
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
-        // Mock: gentle polling that could refresh notifications in a real app
+        // Gentle polling that could refresh notifications in a real app.
+        // Notifications are kept stable by default in this demo harness.
         const interval = setInterval(() => {
-            // keep notifications stable in this mock by default
+            // no-op by default
         }, 60000);
         return () => clearInterval(interval);
     }, []);

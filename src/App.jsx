@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import HomePage from './pages/HomePage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
-// import AdminPortal from './portals/AdminPortal.jsx';
+import AdminPortal from './portals/AdminPortal.jsx';
 import ManagerPortal from './portals/ManagerPortal.jsx';
 
 function App() {
@@ -21,7 +21,7 @@ function App() {
     }, []);
 
     useEffect(() => {
-        if (!isAuthenticated && currentPath === '/manager') {
+        if (!isAuthenticated && (currentPath === '/manager' || currentPath === '/admin')) {
             const redirectUrl = '/auth?view=signin';
             if (window.location.pathname !== '/auth') {
                 window.history.replaceState(null, '', redirectUrl);
@@ -44,6 +44,11 @@ function App() {
                 window.history.replaceState(null, '', '/manager');
             }
             setCurrentPath('/manager');
+        } else if (role === 'admin') {
+            if (window.location.pathname !== '/admin') {
+                window.history.replaceState(null, '', '/admin');
+            }
+            setCurrentPath('/admin');
         }
     };
 
@@ -60,12 +65,7 @@ function App() {
     // --- MAIN RENDER LOGIC ---
     if (isAuthenticated) {
         if (userRole === 'admin') {
-            return (
-                <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center gap-4">
-                    <h1 className="text-3xl font-semibold">Welcome Admin!</h1>
-                    <p className="text-slate-300">{userProfile?.institution} is now onboarded. Explore your dashboard.</p>
-                </div>
-            );
+            return <AdminPortal user={userProfile} onLogout={handleLogout} />;
         }
         if (userRole === 'manager') {
             return <ManagerPortal user={userProfile} onLogout={handleLogout} />;
@@ -73,7 +73,7 @@ function App() {
     }
     
     // If not authenticated, show public pages based on URL
-    if (currentPath === '/auth' || currentPath === '/manager') {
+    if (currentPath === '/auth' || currentPath === '/manager' || currentPath === '/admin') {
         return <AuthPage key={currentPath} onAuthSuccess={handleAuthSuccess} />;
     }
 
