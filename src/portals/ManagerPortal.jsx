@@ -1,13 +1,15 @@
+/* eslint-disable no-unused-vars */
 // src/portals/ManagerPortal.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import ReactFlow, { Controls, Background, MarkerType } from "reactflow";
-import "reactflow/dist/style.css"; // Required styles for React Flow
-
+import ReactFlow, { Background, Controls, MarkerType } from "reactflow";
+import "reactflow/dist/style.css";
+import logo from "../assets/nobglogo.png";
 import {
   LogOut,
   LayoutDashboard,
   ShieldAlert,
-  GitBranch,
+  Waypoints,
+  Users,
   FileText,
   Settings,
   AlertTriangle,
@@ -17,17 +19,110 @@ import {
   X,
   CheckCircle,
   Undo2,
+  Zap,
 } from "lucide-react";
-import {
-  fetchTransactions,
-  authorizeHold,
-  releaseFunds,
-  MOCK_CCN_REPORT,
-} from "../services/mockApiService";
-import PortalNavbar from "../components/PortalNavbar.jsx";
-import "./ManagerPortal.css";
 
-// Utility & reusable UI components
+// --- INLINED STYLES & MOCK SERVICE ---
+
+const GlobalStyles = () => (
+  <style>{`
+        .dashboard-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .dashboard-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dashboard-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+        .dashboard-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    `}</style>
+);
+
+const NGN_FORMATTER = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  minimumFractionDigits: 0,
+});
+
+const MOCK_TRANSACTIONS = [
+  {
+    id: "TXN1001",
+    amount: 85000,
+    gnnScore: 0.12,
+    status: "CLEAN",
+    source: "ACC...234",
+    destination: "ACC...567",
+    timestamp: new Date(Date.now() - 2 * 60000).toISOString(),
+    is_fraud_network: false,
+    deviceFingerprint: "DEV_A",
+  },
+  {
+    id: "TXN1003",
+    amount: 5000000,
+    gnnScore: 0.96,
+    status: "HIGH RISK",
+    source: "ACC_STOLEN",
+    destination: "ACC_MULE_1",
+    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
+    is_fraud_network: true,
+    deviceFingerprint: "DEV_C_FRAUD",
+  },
+  {
+    id: "TXN1005",
+    amount: 4800000,
+    gnnScore: 0.98,
+    status: "FROZEN",
+    source: "ACC_MULE_1",
+    destination: "ACC_MULE_2",
+    timestamp: new Date(Date.now() - 7 * 60000).toISOString(),
+    is_fraud_network: true,
+    deviceFingerprint: "DEV_C_FRAUD",
+  },
+  {
+    id: "TXN1007",
+    amount: 5200000,
+    gnnScore: 0.97,
+    status: "FROZEN",
+    source: "ACC_MULE_2",
+    destination: "ACC_EXIT_POINT",
+    timestamp: new Date(Date.now() - 10 * 60000).toISOString(),
+    is_fraud_network: true,
+    deviceFingerprint: "DEV_C_FRAUD",
+  },
+  ...Array.from({ length: 50 }, (_, i) => ({
+    id: `TXN_C_${i}`,
+    amount: Math.random() * 50000 + 1000,
+    gnnScore: Math.random() * 0.2,
+    status: "CLEAN",
+    source: `ACC...${1000 + i}`,
+    destination: `ACC...${2000 + i}`,
+    timestamp: new Date(Date.now() - (11 + i) * 60000).toISOString(),
+    is_fraud_network: false,
+    deviceFingerprint: `DEV_CLEAN_${i}`,
+  })),
+];
+
+const MOCK_CCN_REPORT = (caseData) =>
+  `INCIDENT ID: ${
+    caseData.id
+  }\nAI-GENERATED COMPLIANCE MEMORANDUM\nSTATUS: PENDING HUMAN AUTHORIZATION\n\n1. ACTION TAKEN: Autonomous Micro-Freeze executed on ${
+    caseData.destination
+  }.\n2. JUSTIFICATION (GNN): Transaction ${
+    caseData.id
+  } is part of a high-confidence 'Fan-Out, Converge-In' structural anomaly (GNN Score: ${(
+    caseData.gnnScore * 100
+  ).toFixed(1)}%) originating from ${
+    caseData.source
+  }.\n3. CONSEQUENCE ANALYSIS (CDT): Failure to act carried a 98.5% confidence of regulatory non-compliance, with an estimated Regulatory Penalty Value of 850,000,000 NGN and a Reputational Damage Score of 9.2 (Critical).\n4. RECOMMENDATION: Authorize Formal Hold and proceed with regulatory filing.`;
+
+const mockApiService = {
+  fetchTransactions: () =>
+    new Promise((resolve) => setTimeout(() => resolve(MOCK_TRANSACTIONS), 500)),
+  authorizeHold: (id) => {
+    const txn = MOCK_TRANSACTIONS.find((t) => t.id === id);
+    return Promise.resolve({ ...txn, status: "AUTHORIZED HOLD" });
+  },
+  releaseFunds: (id) => {
+    const txn = MOCK_TRANSACTIONS.find((t) => t.id === id);
+    return Promise.resolve({ ...txn, status: "CLEAN" });
+  },
+  MOCK_CCN_REPORT: MOCK_CCN_REPORT,
+};
 
 const formatRelativeTime = (input) => {
   const timestamp = new Date(input).getTime();
@@ -39,30 +134,64 @@ const formatRelativeTime = (input) => {
   if (diff < minute) return "Just now";
   if (diff < hour) {
     const value = Math.floor(diff / minute);
-    return `${value} minute${value === 1 ? "" : "s"} ago`;
+    return `${value}m ago`;
   }
   if (diff < day) {
     const value = Math.floor(diff / hour);
-    return `${value} hour${value === 1 ? "" : "s"} ago`;
+    return `${value}h ago`;
   }
   const value = Math.floor(diff / day);
-  return `${value} day${value === 1 ? "" : "s"} ago`;
+  return `${value}d ago`;
 };
 
-const KpiCard = ({ title, value }) => (
-  <div className="rounded-2xl border border-white/15 bg-black/60 p-6 backdrop-blur-xl">
-    <p className="mb-2 text-sm text-white/60">{title}</p>
-    <p className="text-3xl font-bold text-white">{value}</p>
+// --- REUSABLE UI COMPONENTS ---
+
+const PortalNavbar = ({ title, user, onLogout }) => (
+  <header className="sticky top-0 z-10 flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-white/80 px-6 backdrop-blur-md md:px-10">
+    <div className="flex items-center gap-3">
+      <img
+        src={logo}
+        alt="Nexus Disrupt logo"
+        className="h-10 w-10 rounded-full bg-slate-100 object-cover shadow"
+      />
+      <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+    </div>
+    <div className="flex items-center gap-3">
+      <span className="hidden text-sm text-slate-600 sm:inline">{user}</span>
+      <button
+        onClick={onLogout}
+        className="rounded-full p-2 text-slate-500 transition-colors hover:bg-red-100 hover:text-red-600"
+      >
+        <LogOut size={20} />
+      </button>
+    </div>
+  </header>
+);
+
+const KpiCard = ({
+  title,
+  value,
+  icon: Icon,
+  colorClass = "text-slate-900",
+}) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow duration-300 hover:shadow-lg">
+    <div className="flex items-start justify-between">
+      <p className="mb-2 text-sm font-medium text-slate-500">{title}</p>
+      {Icon && <Icon size={20} className={colorClass} />}
+    </div>
+    <div className="flex items-baseline gap-3">
+      <p className={`text-3xl font-bold ${colorClass}`}>{value}</p>
+    </div>
   </div>
 );
 
 const FilterButton = ({ active, children, onClick }) => (
   <button
     onClick={onClick}
-    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${
+    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
       active
-        ? "bg-zenithRed text-white shadow-lg shadow-zenithRed/20"
-        : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+        ? "bg-red-600 text-white shadow-md shadow-red-600/20"
+        : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800"
     }`}
   >
     {children}
@@ -77,8 +206,8 @@ const NavItem = ({ icon, text, isExpanded, active = false, onClick }) => (
         isExpanded ? "px-4" : "justify-center px-0"
       } ${
         active
-          ? "bg-zenithRed text-white shadow-lg shadow-zenithRed/30"
-          : "text-white/70 hover:bg-white/10 hover:text-white"
+          ? "bg-red-600 text-white shadow-lg shadow-red-600/30"
+          : "text-slate-300 hover:bg-slate-700 hover:text-white"
       }`}
     >
       <span className="shrink-0">{icon}</span>
@@ -93,59 +222,35 @@ const NavItem = ({ icon, text, isExpanded, active = false, onClick }) => (
   </li>
 );
 
-// Graph & page components
+// --- PAGE COMPONENTS ---
 
-// 1. GNN Graph Component
-const GNNGraph = ({ nodes, edges }) => (
-  <div className="w-full h-full rounded-2xl overflow-hidden bg-gradient-to-tr from-[#31050c] via-[#110307] to-[#050304]">
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      fitView
-      proOptions={{ hideAttribution: true }}
-    >
-      <Controls
-        showInteractive={false}
-        className="[&>button]:bg-white/10 [&>button]:border-none [&>button:hover]:bg-white/20"
-      />
-      <Background
-        variant="dots"
-        gap={20}
-        size={1}
-        color="rgba(255, 255, 255, 0.1)"
-      />
-    </ReactFlow>
-  </div>
-);
-
-// 2. Operational Dashboard Page
 const OperationalDashboard = ({ onViewDetails }) => {
   const [transactions, setTransactions] = useState([]);
   const [streamedTransactions, setStreamedTransactions] = useState([]);
-  const [kpiStats, setKpiStats] = useState({ secured: 0, disruptions: 0 });
+  const [kpiStats, setKpiStats] = useState({
+    secured: 0,
+    disruptions: 0,
+    credits: 0,
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [networkFilter, setNetworkFilter] = useState("all");
-  const [amountFilter, setAmountFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const PAGE_SIZE = 10;
-
   useEffect(() => {
-    fetchTransactions().then(setTransactions);
+    mockApiService.fetchTransactions().then(setTransactions);
   }, []);
-
   useEffect(() => {
     if (!transactions.length) return;
     setStreamedTransactions([]);
-    setKpiStats({ secured: 0, disruptions: 0 });
+    setKpiStats({ secured: 0, disruptions: 0, credits: 0 });
     let i = 0;
     const interval = setInterval(() => {
       setStreamedTransactions((prev) => {
         if (i >= transactions.length) {
-          clearInterval(interval);
-          return prev;
+          i = 0;
         }
         const nextTxn = transactions[i];
         i++;
@@ -156,10 +261,11 @@ const OperationalDashboard = ({ onViewDetails }) => {
           setKpiStats((s) => ({
             secured: s.secured + nextTxn.amount,
             disruptions: s.disruptions + 1,
+            credits: s.credits + 1,
           }));
         }
         setCurrentPage(1);
-        return [nextTxn, ...prev];
+        return [nextTxn, ...prev.slice(0, 199)];
       });
     }, 1500);
     return () => clearInterval(interval);
@@ -177,15 +283,6 @@ const OperationalDashboard = ({ onViewDetails }) => {
       if (statusFilter !== "all" && txn.status !== statusFilter) return false;
       if (networkFilter === "fraud" && !txn.is_fraud_network) return false;
       if (networkFilter === "legit" && txn.is_fraud_network) return false;
-      if (amountFilter !== "all") {
-        if (amountFilter === "lt100k" && txn.amount >= 100000) return false;
-        if (
-          amountFilter === "100-500" &&
-          (txn.amount < 100000 || txn.amount > 500000)
-        )
-          return false;
-        if (amountFilter === "gt500" && txn.amount <= 500000) return false;
-      }
       if (timeFilter !== "all") {
         const txnTime = new Date(txn.timestamp).getTime();
         if (timeFilter === "last15" && txnTime < thresholds.last15)
@@ -214,7 +311,6 @@ const OperationalDashboard = ({ onViewDetails }) => {
     streamedTransactions,
     statusFilter,
     networkFilter,
-    amountFilter,
     timeFilter,
     searchTerm,
   ]);
@@ -224,17 +320,6 @@ const OperationalDashboard = ({ onViewDetails }) => {
     if (statusFilter !== "all") labels.push(`Status: ${statusFilter}`);
     if (networkFilter !== "all")
       labels.push(networkFilter === "fraud" ? "Fraud Network" : "Legitimate");
-    if (amountFilter !== "all") {
-      labels.push(
-        `Amount: ${
-          amountFilter === "lt100k"
-            ? "< 100k"
-            : amountFilter === "100-500"
-            ? "100k-500k"
-            : "> 500k"
-        }`
-      );
-    }
     if (timeFilter !== "all") {
       labels.push(
         timeFilter === "last15"
@@ -244,8 +329,11 @@ const OperationalDashboard = ({ onViewDetails }) => {
           : "Last 24h"
       );
     }
-    return { activeFiltersCount: labels.length, activeFilterLabels: labels };
-  }, [statusFilter, networkFilter, amountFilter, timeFilter]);
+    return {
+      activeFiltersCount: labels.length,
+      activeFilterLabels: labels.join(" • "),
+    };
+  }, [statusFilter, networkFilter, timeFilter]);
 
   const totalPages = Math.max(
     1,
@@ -256,22 +344,33 @@ const OperationalDashboard = ({ onViewDetails }) => {
   }, [currentPage, totalPages]);
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, networkFilter, amountFilter, timeFilter, searchTerm]);
+  }, [statusFilter, networkFilter, timeFilter, searchTerm]);
   const paginatedTransactions = filteredTransactions.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
-
   const getStatusClasses = (status) => {
     switch (status) {
       case "HIGH RISK":
-        return "bg-yellow-500/10 text-yellow-400";
+        return "bg-yellow-100 text-yellow-800";
       case "FROZEN":
-        return "bg-zenithRed/20 text-zenithRed";
+        return "bg-red-100 text-red-800";
       case "AUTHORIZED HOLD":
-        return "bg-blue-500/20 text-blue-400";
+        return "bg-blue-100 text-blue-800";
       default:
-        return "bg-white/5 text-white/60";
+        return "bg-green-100 text-green-800";
+    }
+  };
+  const getRowClasses = (status) => {
+    switch (status) {
+      case "HIGH RISK":
+        return "bg-yellow-50 hover:bg-yellow-100/60";
+      case "FROZEN":
+        return "bg-red-50 hover:bg-red-100/60 border-l-4 border-red-500";
+      case "AUTHORIZED HOLD":
+        return "bg-blue-50 hover:bg-blue-100/60";
+      default:
+        return "bg-white hover:bg-slate-50";
     }
   };
 
@@ -279,15 +378,26 @@ const OperationalDashboard = ({ onViewDetails }) => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Total Funds Secured"
-          value={`NGN ${kpiStats.secured.toLocaleString()}`}
+          title="Total Funds Secured (24h)"
+          value={NGN_FORMATTER.format(kpiStats.secured)}
+          icon={ShieldCheck}
+          colorClass="text-green-600"
         />
-        <KpiCard title="Active Disruptions" value={kpiStats.disruptions} />
-        <KpiCard title="AI False Positive Rate" value="0.12%" />
-        <KpiCard title="Avg. Disruption Time" value="280ms" />
+        <KpiCard
+          title="Active Disruptions"
+          value={kpiStats.disruptions}
+          icon={ShieldAlert}
+          colorClass="text-red-600"
+        />
+        <KpiCard
+          title="GNN Credits Used (24h)"
+          value={kpiStats.credits.toLocaleString()}
+          icon={Zap}
+        />
+        <KpiCard title="Avg. Disruption Time" value="280ms" icon={Clock} />
       </div>
       <div
-        className={`rounded-3xl border border-white/10 bg-black/40 px-4 md:px-6 backdrop-blur-xl shadow-[0_30px_60px_-40px_rgba(0,0,0,0.8)] ${
+        className={`rounded-2xl border border-slate-200 bg-white/80 px-4 md:px-6 shadow-lg backdrop-blur-md ${
           filtersOpen ? "py-5" : "py-3"
         }`}
       >
@@ -295,26 +405,26 @@ const OperationalDashboard = ({ onViewDetails }) => {
           <div className={`flex-1 ${filtersOpen ? "space-y-4" : "space-y-2"}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                   Transaction filters
                 </p>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-slate-500">
                   {activeFiltersCount > 0
-                    ? activeFilterLabels.join(" • ")
+                    ? activeFilterLabels
                     : "No filters applied"}
                 </p>
               </div>
               <button
                 onClick={() => setFiltersOpen((p) => !p)}
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition ${
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-widest transition ${
                   filtersOpen
-                    ? "bg-white/10 text-white"
-                    : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                    ? "bg-slate-200 text-slate-800"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {filtersOpen ? "Hide" : "Show"} Filters
+                {filtersOpen ? "Hide" : "Show"} Filters{" "}
                 {activeFiltersCount > 0 && (
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-zenithRed text-[10px] font-bold text-white">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -327,8 +437,8 @@ const OperationalDashboard = ({ onViewDetails }) => {
                     { label: "All statuses", value: "all" },
                     { label: "High Risk", value: "HIGH RISK" },
                     { label: "Frozen", value: "FROZEN" },
-                    { label: "Authorized Hold", value: "AUTHORIZED HOLD" },
-                    { label: "OK", value: "OK" },
+                    { label: "Authorized", value: "AUTHORIZED HOLD" },
+                    { label: "Clean", value: "CLEAN" },
                   ].map((o) => (
                     <FilterButton
                       key={o.value}
@@ -356,22 +466,6 @@ const OperationalDashboard = ({ onViewDetails }) => {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {[
-                    { label: "All amounts", value: "all" },
-                    { label: "< 100k", value: "lt100k" },
-                    { label: "100k-500k", value: "100-500" },
-                    { label: "> 500k", value: "gt500" },
-                  ].map((o) => (
-                    <FilterButton
-                      key={o.value}
-                      active={amountFilter === o.value}
-                      onClick={() => setAmountFilter(o.value)}
-                    >
-                      {o.label}
-                    </FilterButton>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
                     { label: "Any time", value: "all" },
                     { label: "Last 15m", value: "last15" },
                     { label: "Last 1h", value: "last60" },
@@ -392,50 +486,50 @@ const OperationalDashboard = ({ onViewDetails }) => {
           <div className="w-full max-w-sm">
             <label
               htmlFor="tx-search"
-              className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-white/50"
+              className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400"
             >
               Search transactions
             </label>
-            <div className="rounded-full border border-white/10 bg-black/60 px-4 py-2 focus-within:border-zenithRed focus-within:ring-2 focus-within:ring-zenithRed/30">
+            <div className="rounded-full border border-slate-300 bg-white px-4 py-2 focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-600/20">
               <input
                 id="tx-search"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="ID, account, device, amount..."
-                className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
+                className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none"
               />
             </div>
           </div>
         </div>
       </div>
-      <div className="rounded-3xl border border-white/15 bg-black/50 p-6 shadow-[0_40px_80px_-40px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
-        <h3 className="mb-4 text-xl font-semibold text-white">
+      <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-lg backdrop-blur-md">
+        <h3 className="mb-4 text-xl font-semibold text-slate-900">
           Real-Time Transaction Feed
         </h3>
         <div className="dashboard-scroll overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="border-b border-white/10">
+            <thead className="border-b border-slate-200">
               <tr>
-                <th className="p-4 text-sm font-semibold text-gray-400">
+                <th className="p-4 text-sm font-semibold text-slate-500">
                   Timestamp
                 </th>
-                <th className="p-4 text-sm font-semibold text-gray-400">
+                <th className="p-4 text-sm font-semibold text-slate-500">
                   Source
                 </th>
-                <th className="p-4 text-sm font-semibold text-gray-400">
+                <th className="p-4 text-sm font-semibold text-slate-500">
                   Destination
                 </th>
-                <th className="p-4 text-sm font-semibold text-gray-400">
+                <th className="p-4 text-sm font-semibold text-slate-500">
                   Amount
                 </th>
-                <th className="p-4 text-sm font-semibold text-gray-400">
+                <th className="p-4 text-sm font-semibold text-slate-500">
                   GNN Score
                 </th>
-                <th className="p-4 text-sm font-semibold text-gray-400">
+                <th className="p-4 text-sm font-semibold text-slate-500">
                   Status
                 </th>
-                <th className="p-4 text-sm font-semibold text-gray-400 text-right">
+                <th className="p-4 text-sm font-semibold text-slate-500 text-right">
                   Actions
                 </th>
               </tr>
@@ -445,7 +539,7 @@ const OperationalDashboard = ({ onViewDetails }) => {
                 <tr>
                   <td
                     colSpan={7}
-                    className="p-6 text-center text-sm text-gray-500"
+                    className="p-6 text-center text-sm text-slate-500"
                   >
                     {streamedTransactions.length === 0
                       ? "Initializing live data stream..."
@@ -456,23 +550,25 @@ const OperationalDashboard = ({ onViewDetails }) => {
                 paginatedTransactions.map((txn) => (
                   <tr
                     key={txn.id}
-                    className="border-b border-white/5 transition-colors hover:bg-white/5"
+                    className={`border-b border-slate-100 last:border-none transition-colors ${getRowClasses(
+                      txn.status
+                    )}`}
                   >
-                    <td className="p-4 text-sm text-gray-300">
+                    <td className="p-4 text-sm text-slate-600">
                       {new Date(txn.timestamp).toLocaleTimeString()}
                     </td>
-                    <td className="p-4 font-mono text-sm text-gray-300">
+                    <td className="p-4 font-mono text-sm text-slate-700">
                       {txn.source}
                     </td>
-                    <td className="p-4 font-mono text-sm text-gray-300">
+                    <td className="p-4 font-mono text-sm text-slate-700">
                       {txn.destination}
                     </td>
-                    <td className="p-4 text-sm font-semibold text-gray-300">
-                      NGN {txn.amount.toLocaleString()}
+                    <td className="p-4 text-sm font-semibold text-slate-800">
+                      {NGN_FORMATTER.format(txn.amount)}
                     </td>
                     <td
                       className={`p-4 font-mono text-sm font-semibold ${
-                        txn.gnnScore > 0.9 ? "text-zenithRed" : "text-green-400"
+                        txn.gnnScore > 0.9 ? "text-red-600" : "text-green-600"
                       }`}
                     >
                       {txn.gnnScore.toFixed(2)}
@@ -489,7 +585,7 @@ const OperationalDashboard = ({ onViewDetails }) => {
                     <td className="p-4 text-right">
                       <button
                         onClick={() => onViewDetails(txn)}
-                        className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-zenithRed/80 hover:text-white"
+                        className="rounded-full bg-slate-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-red-600"
                       >
                         Details
                       </button>
@@ -501,7 +597,7 @@ const OperationalDashboard = ({ onViewDetails }) => {
           </table>
         </div>
         <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-slate-500">
             {filteredTransactions.length === 0
               ? "No results"
               : `Showing ${paginatedTransactions.length} of ${filteredTransactions.length} transactions`}
@@ -510,15 +606,11 @@ const OperationalDashboard = ({ onViewDetails }) => {
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1 || filteredTransactions.length === 0}
-              className={`h-9 rounded-lg px-3 text-sm font-medium transition-colors ${
-                currentPage === 1 || filteredTransactions.length === 0
-                  ? "cursor-not-allowed bg-white/5 text-white/40"
-                  : "bg-white/15 text-white hover:bg-white/25"
-              }`}
+              className="h-9 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors disabled:cursor-not-allowed disabled:text-slate-300 enabled:hover:bg-slate-100"
             >
               Previous
             </button>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-slate-500">
               Page {currentPage} of {totalPages}
             </span>
             <button
@@ -526,11 +618,7 @@ const OperationalDashboard = ({ onViewDetails }) => {
               disabled={
                 currentPage === totalPages || filteredTransactions.length === 0
               }
-              className={`h-9 rounded-lg px-3 text-sm font-medium transition-colors ${
-                currentPage === totalPages || filteredTransactions.length === 0
-                  ? "cursor-not-allowed bg-white/5 text-white/40"
-                  : "bg-white/15 text-white hover:bg-white/25"
-              }`}
+              className="h-9 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors disabled:cursor-not-allowed disabled:text-slate-300 enabled:hover:bg-slate-100"
             >
               Next
             </button>
@@ -546,15 +634,10 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPageCases, setCurrentPageCases] = useState(1);
   const PAGE_SIZE_CASES = 8;
-  useEffect(() => { setCurrentPageCases(1); }, [cases]);
-  const totalPagesCases = Math.max(1, Math.ceil(cases.length / PAGE_SIZE_CASES));
-  const startCase = (currentPageCases - 1) * PAGE_SIZE_CASES;
-  const endCase = startCase + PAGE_SIZE_CASES;
-  const paginatedCases = cases.slice(startCase, endCase);
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
-    fetchTransactions().then((data) => {
+    mockApiService.fetchTransactions().then((data) => {
       if (!mounted) return;
       const queue = data
         .filter(
@@ -566,7 +649,7 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
           const pA = a.status === "FROZEN" ? 0 : 1;
           const pB = b.status === "FROZEN" ? 0 : 1;
           if (pA !== pB) return pA - pB;
-          return b.amount - a.amount;
+          return new Date(b.timestamp) - new Date(a.timestamp);
         });
       setCases(queue);
       setIsLoading(false);
@@ -575,29 +658,37 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
       mounted = false;
     };
   }, [refreshToken]);
+  const totalPagesCases = Math.max(
+    1,
+    Math.ceil(cases.length / PAGE_SIZE_CASES)
+  );
+  const paginatedCases = cases.slice(
+    (currentPageCases - 1) * PAGE_SIZE_CASES,
+    currentPageCases * PAGE_SIZE_CASES
+  );
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-white">
+          <h2 className="text-2xl font-semibold text-slate-900">
             Authorization Queue
           </h2>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-slate-600">
             Prioritized list of high-risk incidents awaiting human review.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70">
-          <AlertTriangle size={14} className="text-zenithRed" />
+        <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-700">
+          <AlertTriangle size={14} />
           {cases.length} active case{cases.length === 1 ? "" : "s"}
         </div>
       </div>
       <div className="space-y-4">
         {isLoading ? (
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center text-sm text-white/60">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
             Scanning for active disruptions...
           </div>
         ) : cases.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center text-sm text-white/60">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
             No active incidents require review. The network is stable.
           </div>
         ) : (
@@ -605,39 +696,39 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
             <button
               key={item.id}
               onClick={() => onSelectCase?.(item)}
-              className="group w-full rounded-3xl border border-white/10 bg-black/45 p-5 text-left transition hover:border-zenithRed/40 hover:bg-black/60"
+              className="group w-full rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-lg transition hover:border-red-600/40 hover:shadow-xl"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-col gap-2">
-                  <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-zenithRed">
+                  <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-red-600 font-semibold">
                     <ShieldAlert size={14} />
                     {item.status === "FROZEN"
                       ? "Awaiting Authorization"
                       : "AI Escalation"}
                   </div>
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold text-slate-900">
                     {item.id}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-white/70">
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                     <span className="inline-flex items-center gap-2">
-                      <ArrowRight size={14} className="text-white/40" />
+                      <ArrowRight size={14} className="text-slate-400" />
                       {item.source} → {item.destination}
                     </span>
-                    <span className="inline-flex items-center gap-2">
-                      <ShieldCheck size={14} className="text-white/40" />
-                      NGN {item.amount.toLocaleString()}
+                    <span className="inline-flex items-center gap-2 font-medium text-slate-800">
+                      <ShieldCheck size={14} className="text-slate-400" />
+                      {NGN_FORMATTER.format(item.amount)}
                     </span>
                     <span className="inline-flex items-center gap-2">
-                      <Clock size={14} className="text-white/40" />
+                      <Clock size={14} className="text-slate-400" />
                       {formatRelativeTime(item.timestamp)}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-zenithRed/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-zenithRed">
+                  <div className="rounded-full bg-red-100 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-700">
                     {item.status}
                   </div>
-                  <div className="rounded-full bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70">
+                  <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-600">
                     GNN {item.gnnScore.toFixed(2)}
                   </div>
                 </div>
@@ -645,85 +736,171 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
             </button>
           ))
         )}
-        {/* pagination controls for queue */}
-        {cases.length > PAGE_SIZE_CASES && (
-          <div className="mt-2 flex items-center justify-end gap-2">
-            <button onClick={() => setCurrentPageCases(prev => Math.max(prev - 1, 1))} disabled={currentPageCases === 1} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageCases === 1 ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Previous</button>
-            <span className="text-xs text-gray-400">Page {currentPageCases} of {totalPagesCases}</span>
-            <button onClick={() => setCurrentPageCases(prev => Math.min(prev + 1, totalPagesCases))} disabled={currentPageCases === totalPagesCases} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageCases === totalPagesCases ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Next</button>
-          </div>
-        )}
       </div>
+      {cases.length > PAGE_SIZE_CASES && (
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={() => setCurrentPageCases((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPageCases === 1}
+            className="h-9 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors disabled:cursor-not-allowed disabled:text-slate-300 enabled:hover:bg-slate-100"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-slate-500">
+            Page {currentPageCases} of {totalPagesCases}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPageCases((prev) => Math.min(prev + 1, totalPagesCases))
+            }
+            disabled={currentPageCases === totalPagesCases}
+            className="h-9 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors disabled:cursor-not-allowed disabled:text-slate-300 enabled:hover:bg-slate-100"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
 const MiniGNNVisualizer = ({ transaction }) => {
-  // Render a focused ReactFlow subgraph centered on the transaction's account
-  const [localNodes, setLocalNodes] = useState([]);
-  const [localEdges, setLocalEdges] = useState([]);
-
-  useEffect(() => {
-    let mounted = true;
-    if (!transaction) {
-      setLocalNodes([]);
-      setLocalEdges([]);
-      return;
-    }
-    const acct = transaction.source || transaction.destination;
-    fetchTransactions().then((all) => {
-      if (!mounted) return;
-      // build a small subgraph of transactions involving the account (and their immediate neighbors)
-      const related = all.filter((t) => t.source === acct || t.destination === acct);
-      const neighbors = new Set();
-      related.forEach((t) => {
-        neighbors.add(t.source);
-        neighbors.add(t.destination);
-      });
-
-      const nodesArr = Array.from(neighbors);
-      const nodes = nodesArr.map((id, i) => ({
-        id,
-        position: { x: 50 + (Math.cos((i / nodesArr.length) * Math.PI * 2) * 40), y: 50 + (Math.sin((i / nodesArr.length) * Math.PI * 2) * 40) },
-        data: { label: id },
-        style: {
-          minWidth: 90,
-          padding: 6,
-          fontSize: 12,
-          background: id === acct ? '#0ea5e9' : '#111827',
-          color: 'white',
-          border: id === acct ? '2px solid #60a5fa' : 'none',
-        },
-      }));
-
-      const edges = related.map((t) => ({
-        id: `e-${t.id}`,
-        source: t.source,
-        target: t.destination,
-        animated: true,
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#60a5fa' },
-        style: { stroke: '#60a5fa', strokeWidth: 1 },
-      }));
-
-      setLocalNodes(nodes);
-      setLocalEdges(edges);
-    });
-    return () => { mounted = false; };
+  const nodes = useMemo(() => {
+    if (!transaction) return [];
+    return [
+      { id: transaction.source, x: 50, y: 100 },
+      { id: transaction.destination, x: 250, y: 100, isExit: true },
+      { id: "...", x: 150, y: 200 },
+    ];
   }, [transaction]);
+  const edges = useMemo(() => {
+    if (!transaction) return [];
+    return [
+      { from: transaction.source, to: transaction.destination },
+      { from: "...", to: transaction.source },
+    ];
+  }, [transaction]);
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 300 250">
+      {edges.map((edge, i) => {
+        const from = nodes.find((n) => n.id === edge.from);
+        const to = nodes.find((n) => n.id === edge.to);
+        if (!from || !to) return null;
+        return (
+          <line
+            key={i}
+            x1={from.x}
+            y1={from.y}
+            x2={to.x}
+            y2={to.y}
+            stroke="#dc2626"
+            strokeWidth="2"
+            markerEnd="url(#arrowhead)"
+          />
+        );
+      })}
+      {nodes.map((node) => (
+        <g key={node.id}>
+          <circle
+            cx={node.x}
+            cy={node.y}
+            r={node.isExit ? 20 : 16}
+            fill={node.isExit ? "#DC2626" : "#4B5563"}
+            stroke="#FFF"
+            strokeWidth="2"
+          />
+          <text
+            x={node.x}
+            y={node.y + 30}
+            textAnchor="middle"
+            fontSize="10"
+            fill="#FFFFFF"
+            fontWeight="600"
+          >
+            {node.id}
+          </text>
+        </g>
+      ))}
+      <defs>
+        <marker
+          id="arrowhead"
+          markerWidth="8"
+          markerHeight="6"
+          refX="7"
+          refY="3"
+          orient="auto"
+        >
+          <polygon points="0 0, 8 3, 0 6" fill="#DC2626" />
+        </marker>
+      </defs>
+    </svg>
+  );
+};
 
-  if (!transaction) return null;
+const GNNGraph = ({ nodes = [], edges = [] }) => {
+  const nodeTypes = useMemo(
+    () => ({
+      gnnNode: ({ data }) => (
+        <div
+          className={`rounded-full px-4 py-2 text-xs font-semibold shadow-lg shadow-slate-900/40 ${
+            data.isExit
+              ? "bg-red-600 text-white"
+              : "bg-white text-slate-700 border border-slate-200"
+          }`}
+        >
+          {data.label}
+        </div>
+      ),
+    }),
+    []
+  );
+
+  const flowNodes = useMemo(
+    () =>
+      nodes.map((node) => ({
+        id: node.id,
+        data: node.data,
+        position: node.position,
+        type: "gnnNode",
+      })),
+    [nodes]
+  );
+
+  const flowEdges = useMemo(
+    () =>
+      edges.map((edge) => ({
+        ...edge,
+        animated: true,
+        markerEnd: { type: MarkerType.ArrowClosed, color: "#dc2626" },
+        style: { stroke: "#dc2626", strokeWidth: 1.5 },
+      })),
+    [edges]
+  );
+
+  if (!nodes.length) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
+        Awaiting network activity…
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full h-40 rounded-md overflow-hidden bg-black/60">
-      {localNodes.length === 0 ? (
-        <div className="h-full flex items-center justify-center text-xs text-white/60">No graph data available</div>
-      ) : (
-        <ReactFlow nodes={localNodes} edges={localEdges} fitView attributionPosition="bottom-left">
-          <Background variant="dots" gap={12} size={1} color="rgba(255,255,255,0.03)" />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      )}
-    </div>
+    <ReactFlow
+      nodes={flowNodes}
+      edges={flowEdges}
+      nodeTypes={nodeTypes}
+      fitView
+      fitViewOptions={{ padding: 0.2 }}
+      panOnScroll={false}
+      zoomOnScroll={false}
+      proOptions={{ hideAttribution: true }}
+      className="rounded-xl bg-slate-950/80"
+      style={{ width: "100%", height: "100%" }}
+    >
+      <Background gap={24} color="#1e293b" />
+      <Controls showZoom={false} showFitView position="bottom-right" />
+    </ReactFlow>
   );
 };
 
@@ -737,106 +914,122 @@ const CaseReviewModal = ({
   errorMessage,
 }) => {
   if (!open || !caseData) return null;
+  const cdtReport = {
+    regulatoryPenaltyValue: NGN_FORMATTER.format(caseData.gnnScore * 900000000),
+    reputationalDamageScore: `${(caseData.gnnScore * 10).toFixed(
+      1
+    )}/10 (Critical)`,
+  };
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4 py-10 backdrop-blur-md">
-      <div className="relative grid w-full max-w-6xl grid-cols-1 gap-6 rounded-3xl border border-white/15 bg-[#0d0507]/95 p-8 shadow-[0_60px_120px_-50px_rgba(0,0,0,0.9)] md:grid-cols-[1.2fr_0.9fr]">
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4 py-10 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <div
+        className="relative grid w-full max-w-6xl grid-cols-1 gap-0 rounded-3xl border border-slate-300 bg-white shadow-2xl overflow-hidden md:grid-cols-[1.2fr_0.9fr]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white/70 transition hover:bg-white/20"
+          className="absolute right-5 top-5 rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200 z-50"
           aria-label="Close"
         >
           <X size={18} />
         </button>
-        <div className="space-y-6">
+        <div className="space-y-6 p-8 overflow-y-auto max-h-[80vh] dashboard-scroll">
           <div>
-            <h3 className="text-xl font-semibold text-white">
-              Evidence Summary
+            <h3 className="text-2xl font-bold text-slate-900">
+              Evidence Summary: {caseData.id}
             </h3>
-            <p className="text-sm text-white/60">
-              AI surfaced intelligence supporting this freeze.
+            <p className="text-sm text-slate-600">
+              AI-surfaced intelligence supporting this freeze.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
               Nexus map visualizer
             </p>
-            <div className="mt-3 h-40 rounded-xl bg-gradient-to-br from-[#2b0e14] via-[#160608] to-[#0a0204]">
+            <div className="mt-3 h-40 rounded-xl bg-slate-900">
               <MiniGNNVisualizer transaction={caseData} />
             </div>
           </div>
-          <div className="grid gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 sm:grid-cols-2">
+          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                 Consequence report (CDT)
               </p>
-              <ul className="mt-3 space-y-2 text-sm text-white/70">
-                <li>
+              <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                <li className="font-medium">
                   Regulatory Penalty Value:{" "}
-                  {caseData.cdt?.regulatoryPenaltyValue
-                    ? `NGN ${caseData.cdt.regulatoryPenaltyValue.toLocaleString()}`
-                    : "—"}
+                  <span className="font-bold text-red-600">
+                    {cdtReport.regulatoryPenaltyValue}
+                  </span>
                 </li>
-                <li>
+                <li className="font-medium">
                   Reputational Damage Score:{" "}
-                  {caseData.cdt?.reputationalDamageScore ?? "—"}
+                  <span className="font-bold text-yellow-600">
+                    {cdtReport.reputationalDamageScore}
+                  </span>
                 </li>
               </ul>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                 Transaction details
               </p>
-              <dl className="mt-3 space-y-2 text-sm text-white/70">
+              <dl className="mt-3 space-y-2 text-sm text-slate-700">
                 <div className="flex justify-between gap-4">
-                  <dt className="text-white/50">Amount</dt>
-                  <dd className="font-semibold text-white">
-                    NGN {caseData.amount.toLocaleString()}
+                  <dt className="text-slate-500">Amount</dt>
+                  <dd className="font-semibold text-slate-900">
+                    {NGN_FORMATTER.format(caseData.amount)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-white/50">Route</dt>
+                  <dt className="text-slate-500">Route</dt>
                   <dd>
                     {caseData.source} → {caseData.destination}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-white/50">Status</dt>
-                  <dd>{caseData.status}</dd>
+                  <dt className="text-slate-500">Status</dt>
+                  <dd className="font-medium text-red-600">
+                    {caseData.status}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-white/50">Freeze time</dt>
+                  <dt className="text-slate-500">Freeze time</dt>
                   <dd>{new Date(caseData.timestamp).toLocaleString()}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-white/50">Device ID</dt>
-                  <dd>{caseData.deviceFingerprint}</dd>
+                  <dt className="text-slate-500">Device ID</dt>
+                  <dd className="font-mono">{caseData.deviceFingerprint}</dd>
                 </div>
               </dl>
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-black/40 p-5">
+        <div className="flex flex-col gap-5 rounded-l-3xl bg-slate-50 p-8 border-l border-slate-200">
           <div>
-            <h3 className="text-xl font-semibold text-white">
-              Cognitive Compliance Narrative
+            <h3 className="text-xl font-semibold text-slate-900">
+              Cognitive Compliance Narrative (CCN™)
             </h3>
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-slate-600">
               Regulator-ready memo justifying the freeze.
             </p>
           </div>
-          <div className="dashboard-scroll max-h-72 overflow-auto rounded-xl border border-white/10 bg-black/60 p-4 text-xs leading-relaxed text-white/70">
-            <pre className="whitespace-pre-wrap font-sans">
-              {MOCK_CCN_REPORT}
+          <div className="dashboard-scroll flex-1 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-slate-800 p-4 text-xs leading-relaxed text-white/80">
+            <pre className="whitespace-pre-wrap font-mono">
+              {mockApiService.MOCK_CCN_REPORT(caseData)}
             </pre>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 pt-4">
             <button
               onClick={onAuthorize}
               disabled={isProcessing}
-              className={`flex w-full items-center justify-center gap-2 rounded-full bg-zenithRed px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-white transition ${
+              className={`flex w-full items-center justify-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white shadow-lg shadow-red-600/30 transition ${
                 isProcessing
                   ? "cursor-not-allowed opacity-70"
-                  : "hover:brightness-110"
+                  : "hover:bg-red-700"
               }`}
             >
               <CheckCircle size={16} />
@@ -845,17 +1038,17 @@ const CaseReviewModal = ({
             <button
               onClick={onRelease}
               disabled={isProcessing}
-              className={`flex w-full items-center justify-center gap-2 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-white transition ${
+              className={`flex w-full items-center justify-center gap-2 rounded-full bg-slate-200 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-slate-700 transition ${
                 isProcessing
                   ? "cursor-not-allowed opacity-60"
-                  : "hover:bg-white/20"
+                  : "hover:bg-slate-300"
               }`}
             >
               <Undo2 size={16} />
               Release Funds
             </button>
             {errorMessage && (
-              <p className="text-xs text-zenithRed">{errorMessage}</p>
+              <p className="text-xs text-red-600 text-center">{errorMessage}</p>
             )}
           </div>
         </div>
@@ -872,16 +1065,14 @@ const NexusMapVisualizer = ({ refreshToken }) => {
     edges: 0,
     density: "0.00",
   });
-  // richer account metadata for tooltips / hover details
-  const [topAccounts, setTopAccounts] = useState([]);
   const nodeTypes = useMemo(
     () => ({
       custom: ({ data }) => (
         <div
-          className={`group/node relative p-2 px-4 rounded-full shadow-md text-sm font-medium ${
+          className={`group/node relative p-2 px-4 rounded-full shadow-md text-xs font-semibold ${
             data.isExit
-              ? "bg-zenithRed text-white animate-pulse"
-              : "bg-black text-white"
+              ? "bg-red-600 text-white animate-pulse"
+              : "bg-white text-slate-800 border border-slate-300"
           }`}
         >
           {data.label}
@@ -896,45 +1087,14 @@ const NexusMapVisualizer = ({ refreshToken }) => {
     }),
     []
   );
-
   useEffect(() => {
-    fetchTransactions().then((data) => {
+    mockApiService.fetchTransactions().then((data) => {
       const fraudTxns = data.filter((t) => t.is_fraud_network);
-
-      // build per-account stats: counts, totalVolume, lastSeen, sample txns and counterparties
-      const accountStats = new Map();
+      const accountSet = new Set();
       fraudTxns.forEach((t) => {
-        [t.source, t.destination].forEach((acc, idx) => {
-          if (!accountStats.has(acc)) {
-            accountStats.set(acc, {
-              account: acc,
-              count: 0,
-              totalVolume: 0,
-              lastSeen: 0,
-              counterparts: new Map(),
-              sampleTxns: [],
-            });
-          }
-          const s = accountStats.get(acc);
-          s.count += 1;
-          s.totalVolume += t.amount;
-          const ts = new Date(t.timestamp).getTime();
-          if (ts > s.lastSeen) s.lastSeen = ts;
-          const other = idx === 0 ? t.destination : t.source;
-          s.counterparts.set(other, (s.counterparts.get(other) || 0) + 1);
-          if (s.sampleTxns.length < 4)
-            s.sampleTxns.push({
-              id: t.id,
-              route: `${t.source} → ${t.destination}`,
-              amount: t.amount,
-              timestamp: t.timestamp,
-            });
-        });
+        accountSet.add(t.source);
+        accountSet.add(t.destination);
       });
-
-      const accountSet = new Set(accountStats.keys());
-
-      // nodes & edges for ReactFlow
       const initialNodes = Array.from(accountSet).map((acc, i) => ({
         id: acc,
         position: {
@@ -949,100 +1109,50 @@ const NexusMapVisualizer = ({ refreshToken }) => {
         source: t.source,
         target: t.destination,
         animated: true,
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#d71e28" },
-        style: { stroke: "#d71e28", strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "#dc2626" },
+        style: { stroke: "#dc2626", strokeWidth: 1.5 },
       }));
-
-      // build top accounts array sorted by count
-      const top = Array.from(accountStats.values())
-        .map((s) => ({
-          account: s.account,
-          count: s.count,
-          totalVolume: s.totalVolume,
-          lastSeen: s.lastSeen,
-          topCounterparties: Array.from(s.counterparts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([acc, c]) => ({ acc, count: c })),
-          sampleTxns: s.sampleTxns,
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 12);
-
       setNodes(initialNodes);
       setEdges(initialEdges);
       setStats({
         accounts: accountSet.size,
         edges: fraudTxns.length,
-        density: accountSet.size
-          ? (fraudTxns.length / accountSet.size).toFixed(2)
-          : "0.00",
+        density: (fraudTxns.length / accountSet.size).toFixed(2),
+        fraudNodes: accountSet.size,
       });
-      setTopAccounts(top);
     });
   }, [refreshToken]);
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-white">
+        <h2 className="text-3xl font-bold text-slate-900">
           Nexus Map Visualizer
         </h2>
-        <p className="text-sm text-white/60">
+        <p className="text-sm text-slate-600">
           Forensic graph analysis of high-risk transaction networks.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Active Network Accounts" value={stats.accounts} />
-        <KpiCard title="High-Risk Connections" value={stats.edges} />
-        <KpiCard title="Identified Fraud Nodes" value={stats.accounts} />
-        <KpiCard title="Network Density" value={stats.density} />
+        <KpiCard
+          title="Active Network Accounts"
+          value={stats.accounts}
+          icon={Users}
+        />
+        <KpiCard
+          title="High-Risk Connections"
+          value={stats.edges}
+          icon={Waypoints}
+        />
+        <KpiCard
+          title="Identified Fraud Nodes"
+          value={stats.fraudNodes}
+          icon={AlertTriangle}
+          colorClass="text-red-600"
+        />
+        <KpiCard title="Network Density" value={stats.density} icon={Zap} />
       </div>
-      {/* Top accounts list with hover tooltips showing richer details */}
-      {topAccounts && topAccounts.length > 0 && (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 mb-4">
-          {topAccounts.map((a) => (
-            <div
-              key={a.account}
-              className="group relative rounded-2xl border border-white/10 bg-black/50 p-3 text-sm text-white"
-            >
-              <div className="flex items-center justify-between">
-                <div className="font-semibold truncate">{a.account}</div>
-                <div className="text-xs text-white/60 ml-2">{a.count}</div>
-              </div>
-              <div className="mt-2 text-xs text-white/50">Total: NGN {a.totalVolume.toLocaleString()}</div>
-
-              <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 mt-2 w-64 rounded-md bg-slate-800 p-3 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                <div className="mb-1 font-semibold">Details</div>
-                <div className="text-[11px] text-white/60">Last seen: {a.lastSeen ? new Date(a.lastSeen).toLocaleString() : '—'}</div>
-                {a.topCounterparties && a.topCounterparties.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-[11px] text-white/60 mb-1">Top counterparties</div>
-                    <ul className="space-y-1">
-                      {a.topCounterparties.map((c) => (
-                        <li key={c.acc} className="flex justify-between text-[11px]"><span>{c.acc}</span><span className="text-white/50">{c.count}</span></li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {a.sampleTxns && a.sampleTxns.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-[11px] text-white/60 mb-1">Recent txns</div>
-                    <ul className="space-y-1 max-h-28 overflow-auto">
-                      {a.sampleTxns.map((t) => (
-                        <li key={t.id} className="text-[11px] text-white/70">{t.route} • NGN {t.amount.toLocaleString()}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="rounded-3xl border border-white/10 bg-black/40 p-6 h-[60vh]">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50 mb-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg h-[60vh]">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">
           Live Network Graph
         </p>
         <GNNGraph nodes={nodes} edges={edges} />
@@ -1053,107 +1163,104 @@ const NexusMapVisualizer = ({ refreshToken }) => {
 
 const AuditLogsPage = ({ refreshToken }) => {
   const [logs, setLogs] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPageLogs, setCurrentPageLogs] = useState(1);
-  const PAGE_SIZE_LOGS = 20;
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    let mounted = true;
-    fetchTransactions().then((data) => {
-      if (!mounted) return;
-      const entries = data.map((txn) => {
-        let eventType = "Transaction";
-        if (txn.status === "FROZEN") eventType = "AI Micro-Freeze Executed";
-        else if (txn.status === "AUTHORIZED HOLD")
-          eventType = "Human Authorization";
-        else if (txn.is_fraud_network && txn.status === "HIGH RISK")
-          eventType = "High-Risk Escalation";
-        return {
-          id: `${txn.id}-${txn.status}`,
-          timestamp: txn.timestamp,
-          description: `${eventType} for ${txn.id} | Route ${txn.source} → ${
-            txn.destination
-          } | NGN ${txn.amount.toLocaleString()}`,
-          status: txn.status,
-        };
-      });
-      setLogs(
-        entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      );
+    let active = true;
+    setIsLoading(true);
+    mockApiService.fetchTransactions().then((data) => {
+      if (!active) return;
+      const entries = data.slice(0, 30).map((txn) => ({
+        id: `${txn.id}-${txn.timestamp}`,
+        timestamp: txn.timestamp,
+        actor: txn.is_fraud_network ? "AI Sentinel" : "Risk Engine",
+        status: txn.status,
+        message:
+          txn.status === "FROZEN"
+            ? `Escalated freeze on ${txn.destination}`
+            : txn.status === "HIGH RISK"
+            ? `Flagged anomaly on route ${txn.source} → ${txn.destination}`
+            : `Cleared transaction ${txn.id}`,
+      }));
+      setLogs(entries);
+      setIsLoading(false);
     });
     return () => {
-      mounted = false;
+      active = false;
     };
   }, [refreshToken]);
-  const filteredLogs = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return logs;
-    return logs.filter((log) => log.description.toLowerCase().includes(query));
-  }, [logs, searchTerm]);
-  const totalPagesLogs = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE_LOGS));
-  useEffect(() => {
-    if (currentPageLogs > totalPagesLogs) setCurrentPageLogs(totalPagesLogs);
-  }, [currentPageLogs, totalPagesLogs]);
-  useEffect(() => { setCurrentPageLogs(1); }, [filteredLogs]);
-  const paginatedLogs = filteredLogs.slice((currentPageLogs - 1) * PAGE_SIZE_LOGS, currentPageLogs * PAGE_SIZE_LOGS);
+
+  const getStatusPill = (status) => {
+    switch (status) {
+      case "FROZEN":
+        return "bg-red-100 text-red-700";
+      case "HIGH RISK":
+        return "bg-yellow-100 text-yellow-700";
+      case "AUTHORIZED HOLD":
+        return "bg-blue-100 text-blue-700";
+      default:
+        return "bg-emerald-100 text-emerald-700";
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-white">
-            Audit & Compliance Logs
-          </h2>
-          <p className="text-sm text-white/60">
-            Immutable trace of AI actions and human interventions.
-          </p>
-        </div>
-        <div className="w-full max-w-sm">
-          <label
-            htmlFor="log-search"
-            className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-white/50"
-          >
-            Search logs
-          </label>
-          <input
-            id="log-search"
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by ID, route or status"
-            className="w-full rounded-full border border-white/10 bg-black/50 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-zenithRed focus:outline-none"
-          />
-        </div>
+      <div className="flex flex-col gap-2">
+        <h2 className="text-3xl font-bold text-slate-900">
+          Audit & Compliance Logs
+        </h2>
+        <p className="text-sm text-slate-600">
+          Immutable event trail generated by the Cognitive Compliance Narrative
+          engine.
+        </p>
       </div>
-      <div className="space-y-3">
-        {paginatedLogs.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center text-sm text-white/60">
-            No log entries match your criteria.
-          </div>
-        ) : (
-          paginatedLogs.map((log) => (
-            <div
-              key={log.id}
-              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="text-sm text-white">{log.description}</p>
-                <p className="text-xs text-white/50">
-                  {new Date(log.timestamp).toLocaleString()}
-                </p>
-              </div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
-                {log.status}
-              </span>
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-lg">
+        <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+            Last 30 events
+          </span>
+          <span className="text-xs text-slate-500">
+            {logs.length} records • auto-refreshed on action
+          </span>
+        </header>
+        <div className="dashboard-scroll max-h-[60vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="p-6 text-center text-sm text-slate-500">
+              Reconstructing compliance trail…
             </div>
-          ))
-        )}
-        {/* pagination controls for audit logs */}
-        {filteredLogs.length > PAGE_SIZE_LOGS && (
-          <div className="mt-2 flex items-center justify-end gap-2">
-            <button onClick={() => setCurrentPageLogs(p => Math.max(p - 1, 1))} disabled={currentPageLogs === 1} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageLogs === 1 ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Previous</button>
-            <span className="text-xs text-gray-400">Page {currentPageLogs} of {totalPagesLogs}</span>
-            <button onClick={() => setCurrentPageLogs(p => Math.min(p + 1, totalPagesLogs))} disabled={currentPageLogs === totalPagesLogs} className={`h-9 rounded-lg px-3 text-sm font-medium ${currentPageLogs === totalPagesLogs ? 'cursor-not-allowed bg-white/5 text-white/40' : 'bg-white/15 text-white hover:bg-white/25'}`}>Next</button>
-          </div>
-        )}
+          ) : logs.length === 0 ? (
+            <div className="p-6 text-center text-sm text-slate-500">
+              No audit events generated in the current window.
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-200">
+              {logs.map((log) => (
+                <li key={log.id} className="flex items-start gap-4 px-6 py-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900/90 text-xs font-semibold uppercase tracking-widest text-white">
+                    {log.actor === "AI Sentinel" ? "AI" : "RE"}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {log.message}
+                      </p>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[11px] font-semibold ${getStatusPill(
+                          log.status
+                        )}`}
+                      >
+                        {log.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {formatRelativeTime(log.timestamp)} • {log.actor}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1162,42 +1269,42 @@ const AuditLogsPage = ({ refreshToken }) => {
 const SettingsPage = () => (
   <div className="space-y-6">
     <div>
-      <h2 className="text-2xl font-semibold text-white">Portal Settings</h2>
-      <p className="text-sm text-white/60">
+      <h2 className="text-2xl font-semibold text-slate-900">Portal Settings</h2>
+      <p className="text-sm text-slate-600">
         Manage your preferences and workspace configuration.
       </p>
     </div>
-    <div className="max-w-2xl rounded-2xl border border-white/10 bg-black/40 p-8 space-y-6">
+    <div className="max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 space-y-6 shadow-lg">
       <div className="flex items-center justify-between">
-        <label htmlFor="notifications" className="font-semibold text-white">
+        <label htmlFor="notifications" className="font-semibold text-slate-700">
           Email Notifications
         </label>
         <input
           type="checkbox"
           id="notifications"
-          className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-zenithRed focus:ring-zenithRed"
+          className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-600"
           defaultChecked
         />
       </div>
       <div className="flex items-center justify-between">
-        <label htmlFor="auto-refresh" className="font-semibold text-white">
+        <label htmlFor="auto-refresh" className="font-semibold text-slate-700">
           Auto-Refresh Dashboard
         </label>
         <input
           type="checkbox"
           id="auto-refresh"
-          className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-zenithRed focus:ring-zenithRed"
+          className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-600"
           defaultChecked
         />
       </div>
       <div className="flex items-center justify-between">
-        <label htmlFor="theme" className="font-semibold text-white/50">
-          Light Mode (Coming Soon)
+        <label htmlFor="theme" className="font-semibold text-slate-400">
+          Dark Mode (Coming Soon)
         </label>
         <input
           type="checkbox"
           id="theme"
-          className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-zenithRed focus:ring-zenithRed"
+          className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-600"
           disabled
         />
       </div>
@@ -1214,7 +1321,6 @@ const ManagerPortal = ({ user, onLogout }) => {
   const [caseProcessing, setCaseProcessing] = useState(false);
   const [caseError, setCaseError] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
-
   const handleSelectCase = (txn, navigateToQueue = false) => {
     setSelectedCase(txn);
     setIsCaseModalOpen(true);
@@ -1223,6 +1329,7 @@ const ManagerPortal = ({ user, onLogout }) => {
   const handleCloseCase = () => {
     setIsCaseModalOpen(false);
     setCaseError("");
+    setRefreshToken((p) => p + 1);
   };
   const handleCaseDecision = async (action) => {
     if (!selectedCase) return;
@@ -1231,17 +1338,18 @@ const ManagerPortal = ({ user, onLogout }) => {
     try {
       const updated =
         action === "authorize"
-          ? await authorizeHold(selectedCase.id)
-          : await releaseFunds(selectedCase.id);
+          ? await mockApiService.authorizeHold(selectedCase.id)
+          : await mockApiService.releaseFunds(selectedCase.id);
       setSelectedCase(updated);
-      setRefreshToken((p) => p + 1);
+      setTimeout(() => {
+        handleCloseCase();
+        setCaseProcessing(false);
+      }, 1000);
     } catch (error) {
       setCaseError("Unable to log the decision. Please retry.");
-    } finally {
       setCaseProcessing(false);
     }
   };
-
   const pageTitles = {
     dashboard: "Operational Dashboard",
     disruptions: "Active Disruptions",
@@ -1249,7 +1357,6 @@ const ManagerPortal = ({ user, onLogout }) => {
     logs: "Audit & Compliance Logs",
     settings: "Portal Settings",
   };
-
   const renderPage = () => {
     switch (activePage) {
       case "dashboard":
@@ -1279,26 +1386,26 @@ const ManagerPortal = ({ user, onLogout }) => {
         );
     }
   };
-
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#0a0204] via-[#1a060c] to-[#060505] font-sans text-white">
+    <div className="flex h-screen overflow-hidden bg-slate-100 font-sans text-slate-900">
+      <GlobalStyles />
       <nav
-        className={`z-20 flex flex-col border-r border-white/10 bg-black/60 backdrop-blur-2xl transition-all duration-300 ease-in-out ${
+        className={`z-20 flex flex-col border-r border-black/10 bg-slate-900 transition-all duration-300 ease-in-out ${
           isSidebarExpanded ? "w-64" : "w-20"
         }`}
         onMouseEnter={() => setIsSidebarExpanded(true)}
         onMouseLeave={() => setIsSidebarExpanded(false)}
       >
-        <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/10">
-          <span
-            className={`text-xl font-bold text-zenithRed transition-transform duration-200 ${
-              !isSidebarExpanded && "scale-110"
+        <div className="flex h-20 shrink-0 items-center justify-center gap-3 border-b border-white/10 px-2">
+          <img
+            src={logo}
+            alt="Nexus Disrupt logo"
+            className={`h-10 w-10 rounded-full bg-white/90 object-cover shadow transition-transform duration-200 ${
+              !isSidebarExpanded ? "scale-105" : "scale-100"
             }`}
-          >
-            ND
-          </span>
+          />
           <span
-            className={`ml-2 whitespace-nowrap text-xl font-bold text-white transition-all duration-200 ${
+            className={`whitespace-nowrap text-xl font-bold text-white transition-all duration-200 ${
               isSidebarExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
             }`}
           >
@@ -1315,14 +1422,14 @@ const ManagerPortal = ({ user, onLogout }) => {
           />
           <NavItem
             icon={<ShieldAlert size={20} />}
-            text="Active Disruptions"
+            text="Disruptions"
             isExpanded={isSidebarExpanded}
             active={activePage === "disruptions"}
             onClick={() => setActivePage("disruptions")}
           />
           <NavItem
-            icon={<GitBranch size={20} />}
-            text="Nexus Map"
+            icon={<Waypoints size={20} />}
+            text="GNN Map"
             isExpanded={isSidebarExpanded}
             active={activePage === "map"}
             onClick={() => setActivePage("map")}
@@ -1335,7 +1442,7 @@ const ManagerPortal = ({ user, onLogout }) => {
             onClick={() => setActivePage("logs")}
           />
         </ul>
-        <div className="border-t border-white/10 p-6">
+        <div className="border-t border-white/10 p-4">
           <NavItem
             icon={<Settings size={20} />}
             text="Settings"
@@ -1345,7 +1452,7 @@ const ManagerPortal = ({ user, onLogout }) => {
           />
           <button
             onClick={onLogout}
-            className="mt-2 flex h-12 w-full items-center rounded-lg px-4 text-gray-400 transition-colors hover:bg-zenithRed/20 hover:text-zenithRed"
+            className="mt-2 flex h-12 w-full items-center rounded-lg px-4 text-slate-300 transition-colors hover:bg-red-600/20 hover:text-red-600"
           >
             <LogOut size={20} />
             <span
@@ -1358,22 +1465,19 @@ const ManagerPortal = ({ user, onLogout }) => {
           </button>
         </div>
       </nav>
-      <main className="dashboard-scroll flex-1 overflow-y-auto">
+      <main className="dashboard-scroll flex-1 overflow-y-auto bg-slate-100">
         <div className="relative min-h-full">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-zenithRed/30 blur-3xl"></div>
-            <div className="absolute right-[-12%] top-10 h-96 w-96 rounded-full bg-[#e84750]/25 blur-3xl"></div>
-            <div className="absolute left-1/2 top-1/4 h-64 w-64 -translate-x-1/2 rounded-full bg-white/10 blur-3xl"></div>
+          <div className="pointer-events-none absolute inset-0 opacity-50">
+            <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-red-600/5 blur-3xl"></div>
+            <div className="absolute right-[-12%] top-10 h-96 w-96 rounded-full bg-blue-500/5 blur-3xl"></div>
           </div>
           <div className="relative z-10 pb-16">
             <PortalNavbar
-              user={user}
+              user={user?.email}
               onLogout={onLogout}
               title={pageTitles[activePage] || "Operational Dashboard"}
             />
-            <div className="mt-4 space-y-6 px-6 pb-6 md:px-10">
-              {renderPage()}
-            </div>
+            <div className="p-8">{renderPage()}</div>
           </div>
         </div>
       </main>
