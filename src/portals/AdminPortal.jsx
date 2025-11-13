@@ -5,24 +5,49 @@ import {
   Plus,
   Trash2,
   Key,
-  Cpu,
   LayoutDashboard,
   Users,
   FileText,
   Settings,
   LogOut,
   Wallet,
-  TrendingUp,
-  Zap,
   X,
   ShieldCheck,
   Copy,
   Eye,
   EyeOff,
+  Zap,
+  Cpu,
+  Calendar,
+  Clock,
+  TrendingUp,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Activity,
+  BarChart3,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from "recharts";
 
 // --- MOCK HOOKS & CONSTANTS ---
-const useAuth = () => ({ user: { email: "admin@premierbank.com" } }); // Mock user hook
+const useAuth = () => ({ user: { email: "admin@premierbank.com" } });
 const NGN_FORMAT = new Intl.NumberFormat("en-NG", {
   style: "currency",
   currency: "NGN",
@@ -58,16 +83,31 @@ const KpiCard = ({
   value,
   subtitle,
   icon: Icon,
-  colorClass = "text-slate-900",
+  colorClass = "text-slate-600",
+  trend,
 }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-shadow duration-300 hover:shadow-lg">
+  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
     <div className="flex items-start justify-between">
-      <p className="mb-2 text-sm font-medium text-slate-500">{title}</p>
-      {Icon && <Icon size={20} className={colorClass} />}
-    </div>
-    <div className="flex items-baseline gap-3">
-      <p className={`text-3xl font-bold ${colorClass}`}>{value}</p>
-      {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
+      <div className="flex-1">
+        <p className="text-sm font-medium text-slate-500 mb-2">{title}</p>
+        <p className={`text-3xl font-bold ${colorClass} mb-1`}>{value}</p>
+        <p className="text-sm text-slate-400">{subtitle}</p>
+        {trend && (
+          <div
+            className={`flex items-center gap-1 mt-2 text-xs ${trend > 0 ? "text-green-600" : "text-red-600"
+              }`}
+          >
+            <TrendingUp
+              size={12}
+              className={trend < 0 ? "rotate-180" : ""}
+            />
+            <span>{Math.abs(trend)}% vs last month</span>
+          </div>
+        )}
+      </div>
+      <div className={`${colorClass} bg-slate-50 p-3 rounded-lg`}>
+        <Icon size={24} />
+      </div>
     </div>
   </div>
 );
@@ -76,25 +116,90 @@ const NavItem = ({ icon, text, isExpanded, active, onClick }) => (
   <li>
     <button
       onClick={onClick}
-      className={`mx-auto flex h-12 w-full items-center rounded-lg transition-colors duration-200 ${
-        isExpanded ? "px-4" : "justify-center px-0"
-      } ${
-        active
+      className={`mx-auto flex h-12 w-full items-center rounded-lg transition-colors duration-200 ${isExpanded ? "px-4" : "justify-center px-0"
+        } ${active
           ? "bg-red-600 text-white shadow-lg shadow-red-600/30"
           : "text-slate-300 hover:bg-slate-700 hover:text-white"
-      }`}
+        }`}
     >
       <span className="shrink-0">{icon}</span>
       <span
-        className={`ml-4 text-sm font-medium transition-all duration-200 ${
-          isExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
-        }`}
+        className={`ml-4 text-sm font-medium transition-all duration-200 ${isExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
+          }`}
       >
         {text}
       </span>
     </button>
   </li>
 );
+
+const FraudCaseCard = ({ caseId, amount, similarity, timestamp, status }) => {
+  const getColorByRisk = (sim) => {
+    if (sim >= 80)
+      return {
+        bg: "bg-red-50",
+        border: "border-red-300",
+        text: "text-red-700",
+        badge: "bg-red-600",
+      };
+    if (sim >= 50)
+      return {
+        bg: "bg-orange-50",
+        border: "border-orange-300",
+        text: "text-orange-700",
+        badge: "bg-orange-500",
+      };
+    if (sim >= 20)
+      return {
+        bg: "bg-yellow-50",
+        border: "border-yellow-300",
+        text: "text-yellow-700",
+        badge: "bg-yellow-500",
+      };
+    return {
+      bg: "bg-green-50",
+      border: "border-green-300",
+      text: "text-green-700",
+      badge: "bg-green-600",
+    };
+  };
+
+  const colors = getColorByRisk(similarity);
+  const getRiskLabel = (sim) => {
+    if (sim >= 80) return "Critical";
+    if (sim >= 50) return "High";
+    if (sim >= 20) return "Medium";
+    return "Low";
+  };
+
+  return (
+    <div
+      className={`${colors.bg} border ${colors.border} rounded-lg p-4 hover:shadow-md transition-all cursor-pointer`}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="font-mono text-sm text-slate-600">#{caseId}</p>
+          <p className="text-lg font-bold text-slate-900 mt-1">
+            {NGN_FORMAT.format(amount)}
+          </p>
+        </div>
+        <div
+          className={`${colors.badge} text-white px-3 py-1 rounded-full text-xs font-semibold`}
+        >
+          {similarity}% {getRiskLabel(similarity)}
+        </div>
+      </div>
+      <div className="flex items-center justify-between text-xs text-slate-600">
+        <span>{new Date(timestamp).toLocaleString()}</span>
+        {status === "blocked" ? (
+          <CheckCircle size={16} className="text-green-600" />
+        ) : (
+          <XCircle size={16} className="text-red-600" />
+        )}
+      </div>
+    </div>
+  );
+};
 
 // --- MODAL COMPONENTS ---
 
@@ -136,7 +241,9 @@ const AddUserModal = ({ onAddUser, onClose }) => {
             </label>
             <input
               value={form.name}
-              onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, name: e.target.value }))
+              }
               placeholder="Adebayo Tunde"
               className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/20"
               required
@@ -163,7 +270,9 @@ const AddUserModal = ({ onAddUser, onClose }) => {
             </label>
             <select
               value={form.role}
-              onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, role: e.target.value }))
+              }
               className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/20"
             >
               <option>Fraud Manager</option>
@@ -193,14 +302,19 @@ const AddUserModal = ({ onAddUser, onClose }) => {
   );
 };
 
-const LicenseCalculationModal = ({ years, onYearsChange, onClose, onPurchase }) => {
-  const BASE_PRICE = 10000000; // 10 million NGN per year
+const LicenseCalculationModal = ({
+  years,
+  onYearsChange,
+  onClose,
+  onPurchase,
+}) => {
+  const BASE_PRICE = 10000000;
   const calculateDiscount = (years) => {
     if (years === 1) return 0;
-    if (years === 2) return 0.05; // 5% discount
-    if (years === 3) return 0.10; // 10% discount
-    if (years >= 4 && years <= 5) return 0.15; // 15% discount
-    if (years >= 6) return 0.20; // 20% discount
+    if (years === 2) return 0.05;
+    if (years === 3) return 0.1;
+    if (years >= 4 && years <= 5) return 0.15;
+    if (years >= 6) return 0.2;
     return 0;
   };
   const baseTotal = BASE_PRICE * years;
@@ -254,7 +368,9 @@ const LicenseCalculationModal = ({ years, onYearsChange, onClose, onPurchase }) 
           </div>
           <div className="rounded-xl bg-slate-50 p-6 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-600">Base Price ({years} {years === 1 ? 'year' : 'years'})</span>
+              <span className="text-sm text-slate-600">
+                Base Price ({years} {years === 1 ? "year" : "years"})
+              </span>
               <span className="text-sm font-semibold text-slate-900">
                 {NGN_FORMAT.format(baseTotal)}
               </span>
@@ -321,98 +437,433 @@ const LicenseCalculationModal = ({ years, onYearsChange, onClose, onPurchase }) 
 // --- PAGES ---
 
 const AdminDashboard = () => {
-  const currentCredits = 28500;
-  const dailyConsumption = 1800;
-  const estimatedDays = Math.floor(currentCredits / dailyConsumption);
+  const [timeRange, setTimeRange] = useState("7d");
+
+  // License configuration
+  const licenseStart = new Date("2025-01-01");
+  const licenseEnd = new Date("2025-12-31");
+  const currentDate = new Date();
+
+  const totalDuration = Math.ceil(
+    (licenseEnd - licenseStart) / (1000 * 60 * 60 * 24)
+  );
+  const daysUsed = Math.ceil(
+    (currentDate - licenseStart) / (1000 * 60 * 60 * 24)
+  );
+  const daysRemaining = Math.ceil(
+    (licenseEnd - currentDate) / (1000 * 60 * 60 * 24)
+  );
+  const percentageUsed = Math.round((daysUsed / totalDuration) * 100);
+
+  // Fraud detection metrics
+  const totalTransactions = 847362;
+  const fraudsDetected = 1247;
+  const fraudsBlocked = 1089;
+  const fraudsPassed = 158;
+  const detectionRate = ((fraudsDetected / totalTransactions) * 100).toFixed(
+    3
+  );
+  const blockRate = ((fraudsBlocked / fraudsDetected) * 100).toFixed(1);
+  const dailyApiCalls = 12850;
+  const isLicenseActive =
+    currentDate >= licenseStart && currentDate <= licenseEnd;
+
+  // Time series data for fraud detection
+  const fraudTrendData = [
+    {
+      date: "Nov 7",
+      transactions: 121000,
+      frauds: 167,
+      blocked: 145,
+      passed: 22,
+    },
+    {
+      date: "Nov 8",
+      transactions: 118500,
+      frauds: 172,
+      blocked: 151,
+      passed: 21,
+    },
+    {
+      date: "Nov 9",
+      transactions: 125300,
+      frauds: 189,
+      blocked: 165,
+      passed: 24,
+    },
+    {
+      date: "Nov 10",
+      transactions: 119800,
+      frauds: 178,
+      blocked: 155,
+      passed: 23,
+    },
+    {
+      date: "Nov 11",
+      transactions: 127600,
+      frauds: 195,
+      blocked: 172,
+      passed: 23,
+    },
+    {
+      date: "Nov 12",
+      transactions: 123400,
+      frauds: 184,
+      blocked: 160,
+      passed: 24,
+    },
+    {
+      date: "Nov 13",
+      transactions: 131762,
+      frauds: 162,
+      blocked: 141,
+      passed: 21,
+    },
+  ];
+
+  // Risk distribution data
+  const riskDistribution = [
+    { range: "Critical (80-100%)", count: 287, color: "#dc2626" },
+    { range: "High (50-79%)", count: 412, color: "#f97316" },
+    { range: "Medium (20-49%)", count: 368, color: "#eab308" },
+    { range: "Low (0-19%)", count: 180, color: "#16a34a" },
+  ];
+
+  // Success vs Failure
+  const outcomeData = [
+    { name: "Blocked", value: fraudsBlocked, color: "#16a34a" },
+    { name: "Passed", value: fraudsPassed, color: "#dc2626" },
+  ];
+
+  // Recent fraud cases
+  const recentCases = [
+    {
+      caseId: "FR-2847",
+      amount: 45780000,
+      similarity: 94,
+      timestamp: "2025-11-13T14:23:00",
+      status: "blocked",
+    },
+    {
+      caseId: "FR-2846",
+      amount: 12500000,
+      similarity: 67,
+      timestamp: "2025-11-13T13:45:00",
+      status: "blocked",
+    },
+    {
+      caseId: "FR-2845",
+      amount: 8900000,
+      similarity: 38,
+      timestamp: "2025-11-13T12:18:00",
+      status: "blocked",
+    },
+    {
+      caseId: "FR-2844",
+      amount: 52300000,
+      similarity: 89,
+      timestamp: "2025-11-13T11:52:00",
+      status: "blocked",
+    },
+    {
+      caseId: "FR-2843",
+      amount: 3400000,
+      similarity: 23,
+      timestamp: "2025-11-13T10:30:00",
+      status: "blocked",
+    },
+    {
+      caseId: "FR-2842",
+      amount: 78900000,
+      similarity: 91,
+      timestamp: "2025-11-13T09:15:00",
+      status: "passed",
+    },
+  ];
+
+  const totalSaved =
+    recentCases.filter((c) => c.status === "blocked").reduce((sum, c) => sum + c.amount, 0) * 7.2;
+
   const kpis = [
     {
-      title: "Current Credit Balance",
-      value: `${currentCredits.toLocaleString()}`,
-      subtitle: "Credits",
-      icon: Wallet,
-      colorClass: "text-red-600",
+      title: "Total Transactions",
+      value: totalTransactions.toLocaleString(),
+      subtitle: `${detectionRate}% Fraud Rate`,
+      icon: Activity,
+      colorClass: "text-blue-600",
+      trend: 8.3,
     },
     {
-      title: "Est. Days Remaining",
-      value: `${estimatedDays}`,
-      subtitle: "Before Refill",
-      icon: TrendingUp,
+      title: "Frauds Detected",
+      value: fraudsDetected.toLocaleString(),
+      subtitle: `${blockRate}% Blocked`,
+      icon: AlertTriangle,
+      colorClass: "text-orange-600",
+      trend: -12.5,
     },
     {
-      title: "GNN Usage (24h)",
-      value: `${dailyConsumption.toLocaleString()}`,
-      subtitle: "Credits",
-      icon: Zap,
-    },
-    {
-      title: "Integration Status",
-      value: "LIVE",
-      subtitle: "Stream Active",
-      icon: Cpu,
+      title: "Amount Saved",
+      value: NGN_FORMAT.format(totalSaved),
+      subtitle: "Last 7 Days",
+      icon: Shield,
       colorClass: "text-green-600",
+      trend: 15.2,
+    },
+    {
+      title: "API Calls (24h)",
+      value: dailyApiCalls.toLocaleString(),
+      subtitle: isLicenseActive ? "Stream Active" : "License Expired",
+      icon: Zap,
+      colorClass: isLicenseActive ? "text-purple-600" : "text-red-600",
     },
   ];
-  const consumptionData = [
-    { day: "Mon", consumed: 500, secured: 20000000 },
-    { day: "Tue", consumed: 1200, secured: 45000000 },
-    { day: "Wed", consumed: 1800, secured: 60000000 },
-    { day: "Thu", consumed: 900, secured: 30000000 },
-    { day: "Fri", consumed: 2500, secured: 85000000 },
-  ];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-lg">
+          <p className="font-semibold text-slate-900 mb-2">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }} className="text-sm">
+              {entry.name}: {entry.value.toLocaleString()}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-8">
-      <h2 className="text-3xl font-bold text-slate-900">
-        Administrator Dashboard
-      </h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-900">
+            Fraud Detection Dashboard
+          </h2>
+          <p className="text-slate-500 mt-1">
+            Real-time fraud monitoring & analytics for Premier Bank
+          </p>
+        </div>
+        <select
+          value={timeRange}
+          onChange={(e) => setTimeRange(e.target.value)}
+          className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="24h">Last 24 Hours</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="90d">Last 90 Days</option>
+        </select>
+      </div>
+
+      {/* KPI Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k, index) => (
           <KpiCard key={index} {...k} />
         ))}
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold text-slate-800">
-          GNN Consumption vs. Value Secured (Last 5 Days)
-        </h3>
-        <p className="text-sm text-slate-500 mb-6">
-          Visual proof of ROI: High credit consumption correlates directly with
-          high NGN value secured from fraud.
-        </p>
-        <div className="h-64 flex justify-around items-end p-2 bg-slate-50 rounded-lg border border-slate-200">
-          {consumptionData.map((data, index) => (
-            <div
-              key={index}
-              className="flex items-end h-full w-1/5 justify-center gap-2 group"
-            >
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-6 bg-red-200 rounded-t-lg transition-all duration-300 group-hover:bg-red-400"
-                  style={{ height: `${(data.consumed / 3000) * 100}%` }}
-                  title={`Consumed: ${data.consumed} Credits`}
-                ></div>
-                <span className="text-xs text-slate-500 mt-2">{data.day}</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-6 bg-blue-200 rounded-t-lg transition-all duration-300 group-hover:bg-blue-400"
-                  style={{ height: `${(data.secured / 100000000) * 100}%` }}
-                  title={`Secured: ${NGN_FORMAT.format(data.secured)}`}
-                ></div>
-                <span className="text-xs text-slate-500 mt-2">{data.day}</span>
-              </div>
-            </div>
-          ))}
+
+      {/* Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Fraud Trend Chart */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Fraud Detection Trend
+            </h3>
+            <Activity className="text-blue-600" size={20} />
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={fraudTrendData}>
+              <defs>
+                <linearGradient id="colorFrauds" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#16a34a" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="date"
+                stroke="#64748b"
+                style={{ fontSize: "12px" }}
+              />
+              <YAxis stroke="#64748b" style={{ fontSize: "12px" }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="frauds"
+                stroke="#f97316"
+                fillOpacity={1}
+                fill="url(#colorFrauds)"
+                name="Detected"
+              />
+              <Area
+                type="monotone"
+                dataKey="blocked"
+                stroke="#16a34a"
+                fillOpacity={1}
+                fill="url(#colorBlocked)"
+                name="Blocked"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
-        <div className="flex justify-center gap-6 mt-4 text-xs font-medium">
-          <span className="flex items-center text-red-600">
-            <div className="w-2 h-2 bg-red-600 rounded-full mr-2"></div>Credits
-            Consumed
-          </span>
-          <span className="flex items-center text-blue-500">
-            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>Value
-            Secured (NGN)
-          </span>
+
+        {/* Risk Distribution */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Risk Distribution
+            </h3>
+            <Eye className="text-orange-600" size={20} />
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={riskDistribution} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis type="number" stroke="#64748b" style={{ fontSize: "12px" }} />
+              <YAxis
+                dataKey="range"
+                type="category"
+                width={130}
+                stroke="#64748b"
+                style={{ fontSize: "11px" }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="Cases" radius={[0, 8, 8, 0]}>
+                {riskDistribution.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Success Rate and Recent Cases */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Success Rate Pie Chart */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Block Rate
+            </h3>
+            <CheckCircle className="text-green-600" size={20} />
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie
+                data={outcomeData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {outcomeData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="text-center mt-4">
+            <p className="text-3xl font-bold text-green-600">{blockRate}%</p>
+            <p className="text-sm text-slate-500">Successfully Blocked</p>
+          </div>
+        </div>
+
+        {/* Recent Fraud Cases */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Recent Fraud Cases
+            </h3>
+            <AlertTriangle className="text-orange-600" size={20} />
+          </div>
+          <div className="grid gap-3 max-h-[280px] overflow-y-auto pr-2">
+            {recentCases.map((fraudCase) => (
+              <FraudCaseCard key={fraudCase.caseId} {...fraudCase} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* License Status */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar className="text-blue-600" size={20} />
+          <h3 className="text-lg font-semibold text-slate-900">
+            License Status
+          </h3>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-600">
+              Start: {licenseStart.toLocaleDateString()}
+            </span>
+            <span className="text-slate-600">
+              End: {licenseEnd.toLocaleDateString()}
+            </span>
+          </div>
+
+          <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className={`absolute left-0 top-0 h-full rounded-full transition-all ${percentageUsed > 80 ? "bg-orange-500" : "bg-blue-600"
+                }`}
+              style={{ width: `${Math.min(percentageUsed, 100)}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-slate-900">
+                {totalDuration}
+              </p>
+              <p className="text-sm text-slate-500">Total Days</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-900">{daysUsed}</p>
+              <p className="text-sm text-slate-500">Days Used</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">
+                {daysRemaining}
+              </p>
+              <p className="text-sm text-slate-500">Days Remaining</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-900">
+                {percentageUsed}%
+              </p>
+              <p className="text-sm text-slate-500">Consumed</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Renewal Alert */}
+      {daysRemaining <= 30 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+          <Clock className="text-orange-600 mt-0.5" size={20} />
+          <div>
+            <p className="font-semibold text-orange-900">
+              License Renewal Reminder
+            </p>
+            <p className="text-sm text-orange-700 mt-1">
+              Your license expires in {daysRemaining} days. Contact support to
+              renew and maintain uninterrupted fraud detection services.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -420,14 +871,15 @@ const AdminDashboard = () => {
 const BillingPage = () => {
   const [showCalculationModal, setShowCalculationModal] = useState(false);
   const [licenseYears, setLicenseYears] = useState(1);
-  const [licenseRemainingDays, setLicenseRemainingDays] = useState(245); // Days remaining on license
-  
-  // License data
+  const [licenseRemainingDays, setLicenseRemainingDays] = useState(245);
+
   const licenseExpiryDate = new Date();
-  licenseExpiryDate.setDate(licenseExpiryDate.getDate() + licenseRemainingDays);
-  const totalLicenseDays = 365; // 1 year license
+  licenseExpiryDate.setDate(
+    licenseExpiryDate.getDate() + licenseRemainingDays
+  );
+  const totalLicenseDays = 365;
   const licenseProgress = (licenseRemainingDays / totalLicenseDays) * 100;
-  
+
   const licenseHistory = [
     {
       date: "2024-11-15",
@@ -453,19 +905,20 @@ const BillingPage = () => {
   ];
 
   const handlePurchaseLicense = ({ years, price }) => {
-    // In a real app, this would make an API call
-    console.log(`Purchasing ${years} year(s) license for ${NGN_FORMAT.format(price)}`);
-    // Update license remaining days (add new years)
-    setLicenseRemainingDays(licenseRemainingDays + (years * 365));
+    console.log(
+      `Purchasing ${years} year(s) license for ${NGN_FORMAT.format(price)}`
+    );
+    setLicenseRemainingDays(licenseRemainingDays + years * 365);
   };
 
   const getTimeRemainingLabel = () => {
     const months = Math.floor(licenseRemainingDays / 30);
     const days = licenseRemainingDays % 30;
     if (months > 0) {
-      return `${months} ${months === 1 ? 'month' : 'months'} ${days > 0 ? `and ${days} ${days === 1 ? 'day' : 'days'}` : ''}`;
+      return `${months} ${months === 1 ? "month" : "months"} ${days > 0 ? `and ${days} ${days === 1 ? "day" : "days"}` : ""
+        }`;
     }
-    return `${days} ${days === 1 ? 'day' : 'days'}`;
+    return `${days} ${days === 1 ? "day" : "days"}`;
   };
 
   return (
@@ -477,7 +930,11 @@ const BillingPage = () => {
         <KpiCard
           title="License Status"
           value="Active"
-          subtitle={`Expires: ${licenseExpiryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+          subtitle={`Expires: ${licenseExpiryDate.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}`}
           icon={ShieldCheck}
           colorClass="text-green-600"
         />
@@ -496,7 +953,7 @@ const BillingPage = () => {
           colorClass="text-red-600"
         />
       </div>
-      
+
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-slate-800">
@@ -515,20 +972,29 @@ const BillingPage = () => {
             readOnly
             className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-600"
             style={{
-              background: `linear-gradient(to right, #dc2626 0%, #dc2626 ${licenseProgress}%, #e2e8f0 ${licenseProgress}%, #e2e8f0 100%)`
+              background: `linear-gradient(to right, #dc2626 0%, #dc2626 ${licenseProgress}%, #e2e8f0 ${licenseProgress}%, #e2e8f0 100%)`,
             }}
           />
           <div className="flex justify-between mt-2 text-xs text-slate-500">
             <span>Expired</span>
-            <span className="font-semibold text-red-600">{Math.round(licenseProgress)}% Remaining</span>
+            <span className="font-semibold text-red-600">
+              {Math.round(licenseProgress)}% Remaining
+            </span>
             <span>Full Year</span>
           </div>
         </div>
         <div className="mt-4 p-4 bg-slate-50 rounded-lg">
           <p className="text-sm text-slate-600">
-            <span className="font-semibold text-slate-900">Current Status:</span> Your license is active and will expire on{" "}
+            <span className="font-semibold text-slate-900">
+              Current Status:
+            </span>{" "}
+            Your license is active and will expire on{" "}
             <span className="font-semibold text-red-600">
-              {licenseExpiryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {licenseExpiryDate.toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </span>
           </p>
         </div>
@@ -595,7 +1061,10 @@ const BillingPage = () => {
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {licenseHistory.map((item, index) => (
-                <tr key={index} className="hover:bg-slate-50 transition-colors">
+                <tr
+                  key={index}
+                  className="hover:bg-slate-50 transition-colors"
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                     {item.date}
                   </td>
@@ -610,11 +1079,10 @@ const BillingPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                        item.status === "Active"
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${item.status === "Active"
                           ? "bg-green-100 text-green-700"
                           : "bg-slate-100 text-slate-600"
-                      }`}
+                        }`}
                     >
                       {item.status}
                     </span>
@@ -754,9 +1222,8 @@ const ApiDocs = () => {
       </h3>
       <div className="bg-slate-800 p-4 rounded-lg">
         <code
-          className={`text-sm font-mono ${
-            method === "POST" ? "text-green-400" : "text-blue-400"
-          }`}
+          className={`text-sm font-mono ${method === "POST" ? "text-green-400" : "text-blue-400"
+            }`}
         >
           {method} {endpoint}
         </code>
@@ -1020,7 +1487,7 @@ const AdminPortal = ({ onLogout }) => {
   const [activePage, setActivePage] = useState("dashboard");
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const pageTitles = {
-    dashboard: "Administrator Dashboard",
+    dashboard: "Fraud Detection Dashboard",
     users: "User Management",
     billing: "License & Billing Management",
     api: "API Integration",
@@ -1047,24 +1514,21 @@ const AdminPortal = ({ onLogout }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
       <nav
-        className={`z-20 flex flex-col border-r border-black/10 bg-slate-900 transition-all duration-300 ease-in-out ${
-          isSidebarExpanded ? "w-64" : "w-20"
-        }`}
+        className={`z-20 flex flex-col border-r border-black/10 bg-slate-900 transition-all duration-300 ease-in-out ${isSidebarExpanded ? "w-64" : "w-20"
+          }`}
         onMouseEnter={() => setIsSidebarExpanded(true)}
         onMouseLeave={() => setIsSidebarExpanded(false)}
       >
         <div className="flex h-20 shrink-0 items-center justify-center border-b border-white/10">
           <span
-            className={`text-xl font-bold text-red-600 transition-transform duration-200 ${
-              !isSidebarExpanded && "scale-110"
-            }`}
+            className={`text-xl font-bold text-red-600 transition-transform duration-200 ${!isSidebarExpanded && "scale-110"
+              }`}
           >
             ND
           </span>
           <span
-            className={`ml-2 whitespace-nowrap text-xl font-bold text-white transition-all duration-200 ${
-              isSidebarExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
-            }`}
+            className={`ml-2 whitespace-nowrap text-xl font-bold text-white transition-all duration-200 ${isSidebarExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
+              }`}
           >
             Nexus Disrupt™
           </span>
@@ -1079,7 +1543,7 @@ const AdminPortal = ({ onLogout }) => {
           />
           <NavItem
             icon={<Wallet size={20} />}
-            text="Billing & Credits"
+            text="Billing & License"
             isExpanded={isSidebarExpanded}
             active={activePage === "billing"}
             onClick={() => setActivePage("billing")}
@@ -1113,9 +1577,8 @@ const AdminPortal = ({ onLogout }) => {
           >
             <LogOut size={20} />
             <span
-              className={`ml-4 text-sm font-medium transition-opacity ${
-                isSidebarExpanded ? "opacity-100" : "opacity-0"
-              }`}
+              className={`ml-4 text-sm font-medium transition-opacity ${isSidebarExpanded ? "opacity-100" : "opacity-0"
+                }`}
             >
               Logout
             </span>
