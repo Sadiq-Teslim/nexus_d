@@ -193,6 +193,131 @@ const AddUserModal = ({ onAddUser, onClose }) => {
   );
 };
 
+const LicenseCalculationModal = ({ years, onYearsChange, onClose, onPurchase }) => {
+  const BASE_PRICE = 10000000; // 10 million NGN per year
+  const calculateDiscount = (years) => {
+    if (years === 1) return 0;
+    if (years === 2) return 0.05; // 5% discount
+    if (years === 3) return 0.10; // 10% discount
+    if (years >= 4 && years <= 5) return 0.15; // 15% discount
+    if (years >= 6) return 0.20; // 20% discount
+    return 0;
+  };
+  const baseTotal = BASE_PRICE * years;
+  const discountRate = calculateDiscount(years);
+  const discountAmount = baseTotal * discountRate;
+  const finalPrice = baseTotal - discountAmount;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <h3 className="text-2xl font-bold text-slate-900">
+            License Pricing Calculator
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-red-600"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        <div className="mt-6 space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <label className="text-sm font-medium text-slate-700">
+                Number of Years
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => onYearsChange(Math.max(1, years - 1))}
+                  className="rounded-full w-8 h-8 flex items-center justify-center border border-slate-300 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors"
+                >
+                  <span className="text-lg">−</span>
+                </button>
+                <span className="text-2xl font-bold text-slate-900 w-12 text-center">
+                  {years}
+                </span>
+                <button
+                  onClick={() => onYearsChange(years + 1)}
+                  className="rounded-full w-8 h-8 flex items-center justify-center border border-slate-300 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-6 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-600">Base Price ({years} {years === 1 ? 'year' : 'years'})</span>
+              <span className="text-sm font-semibold text-slate-900">
+                {NGN_FORMAT.format(baseTotal)}
+              </span>
+            </div>
+            {discountRate > 0 && (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600">
+                    Discount ({(discountRate * 100).toFixed(0)}%)
+                  </span>
+                  <span className="text-sm font-semibold text-green-600">
+                    -{NGN_FORMAT.format(discountAmount)}
+                  </span>
+                </div>
+                <div className="border-t border-slate-200 pt-3 mt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-semibold text-slate-900">
+                      Total Price
+                    </span>
+                    <span className="text-2xl font-bold text-red-600">
+                      {NGN_FORMAT.format(finalPrice)}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+            {discountRate === 0 && (
+              <div className="border-t border-slate-200 pt-3 mt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-base font-semibold text-slate-900">
+                    Total Price
+                  </span>
+                  <span className="text-2xl font-bold text-red-600">
+                    {NGN_FORMAT.format(finalPrice)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onPurchase({ years, price: finalPrice });
+                onClose();
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+            >
+              Purchase License
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- PAGES ---
 
 const AdminDashboard = () => {
@@ -293,240 +418,159 @@ const AdminDashboard = () => {
 };
 
 const BillingPage = () => {
-  const baseAnnualPrice = 10000000;
-  const [years, setYears] = useState(1);
-  const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [licenseRemainingMonths, setLicenseRemainingMonths] = useState(22);
-
-  const calculateQuote = (commitmentYears) => {
-    const subtotal = baseAnnualPrice * commitmentYears;
-    const discountRate =
-      commitmentYears > 1 ? Math.min((commitmentYears - 1) * 0.1, 0.3) : 0;
-    const discountAmount = subtotal * discountRate;
-    const total = subtotal - discountAmount;
-    return {
-      years: commitmentYears,
-      subtotal,
-      discountAmount,
-      discountRate,
-      total,
-    };
-  };
-
-  const [quote, setQuote] = useState(() => calculateQuote(1));
-
-  const plans = {
-    name: "Enterprise License",
-    pricePerYear: baseAnnualPrice,
-    description:
-      "Unlimited Nexus Disrupt™ coverage, dedicated analyst support, and 24/7 incident response.",
-    roi: "Up to 30% savings",
-    color: "border-slate-400",
-  };
-
-  const licensingHistory = [
+  const [showCalculationModal, setShowCalculationModal] = useState(false);
+  const [licenseYears, setLicenseYears] = useState(1);
+  const [licenseRemainingDays, setLicenseRemainingDays] = useState(245); // Days remaining on license
+  
+  // License data
+  const licenseExpiryDate = new Date();
+  licenseExpiryDate.setDate(licenseExpiryDate.getDate() + licenseRemainingDays);
+  const totalLicenseDays = 365; // 1 year license
+  const licenseProgress = (licenseRemainingDays / totalLicenseDays) * 100;
+  
+  const licenseHistory = [
     {
-      date: "2025-10-01",
-      transaction: "Enterprise License Purchase",
-      term: "3 Years",
-      discount: "20%",
-      amount: NGN_FORMAT.format(24000000),
+      date: "2024-11-15",
+      transaction: "License Purchase - 2 Years",
+      amount: 19000000,
+      duration: "2 Years",
       status: "Active",
     },
     {
-      date: "2025-11-05",
-      transaction: "Quarterly Performance Review",
-      term: "Included",
-      discount: "N/A",
-      amount: NGN_FORMAT.format(0),
-      status: "Completed",
+      date: "2023-11-15",
+      transaction: "Initial License Purchase - 1 Year",
+      amount: 10000000,
+      duration: "1 Year",
+      status: "Expired",
     },
     {
-      date: "2025-12-01",
-      transaction: "Projected Renewal Reminder",
-      term: "1 Year",
-      discount: "10%",
-      amount: NGN_FORMAT.format(18000000),
-      status: "Scheduled",
+      date: "2022-11-15",
+      transaction: "License Renewal - 1 Year",
+      amount: 10000000,
+      duration: "1 Year",
+      status: "Expired",
     },
   ];
 
-  const handleIncreaseYears = () => {
-    const nextYears = years + 1;
-    const nextQuote = calculateQuote(nextYears);
-    setYears(nextYears);
-    setQuote(nextQuote);
-    setShowQuoteModal(true);
+  const handlePurchaseLicense = ({ years, price }) => {
+    // In a real app, this would make an API call
+    console.log(`Purchasing ${years} year(s) license for ${NGN_FORMAT.format(price)}`);
+    // Update license remaining days (add new years)
+    setLicenseRemainingDays(licenseRemainingDays + (years * 365));
   };
 
-  const handleResetYears = () => {
-    setYears(1);
-    setQuote(calculateQuote(1));
+  const getTimeRemainingLabel = () => {
+    const months = Math.floor(licenseRemainingDays / 30);
+    const days = licenseRemainingDays % 30;
+    if (months > 0) {
+      return `${months} ${months === 1 ? 'month' : 'months'} ${days > 0 ? `and ${days} ${days === 1 ? 'day' : 'days'}` : ''}`;
+    }
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
   };
+
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-slate-900">
-        Billing & API Credit Management
+        License & Billing Management
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <KpiCard
-          title="Annual License Fee"
-          value={NGN_FORMAT.format(baseAnnualPrice)}
-          subtitle="Base price per administrative year"
-          icon={Wallet}
-          colorClass="text-red-600"
-        />
-        <KpiCard
-          title="Committed Years"
-          value={`${quote.years}`}
-          subtitle="Multi-year savings activated"
+          title="License Status"
+          value="Active"
+          subtitle={`Expires: ${licenseExpiryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
           icon={ShieldCheck}
+          colorClass="text-green-600"
         />
         <KpiCard
-          title="Discount Applied"
-          value={`${(quote.discountRate * 100).toFixed(0)}%`}
-          subtitle="Automatic multi-year discount"
+          title="Time Remaining"
+          value={getTimeRemainingLabel()}
+          subtitle={`${licenseRemainingDays} days left`}
           icon={TrendingUp}
           colorClass="text-blue-600"
         />
+        <KpiCard
+          title="Annual License Fee"
+          value={NGN_FORMAT.format(10000000)}
+          subtitle="Per year"
+          icon={Wallet}
+          colorClass="text-red-600"
+        />
       </div>
+      
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-800">
+            License Time Remaining
+          </h3>
+          <span className="text-sm font-medium text-slate-600">
+            {licenseRemainingDays} / {totalLicenseDays} days
+          </span>
+        </div>
+        <div className="relative">
+          <input
+            type="range"
+            min="0"
+            max={totalLicenseDays}
+            value={licenseRemainingDays}
+            readOnly
+            className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+            style={{
+              background: `linear-gradient(to right, #dc2626 0%, #dc2626 ${licenseProgress}%, #e2e8f0 ${licenseProgress}%, #e2e8f0 100%)`
+            }}
+          />
+          <div className="flex justify-between mt-2 text-xs text-slate-500">
+            <span>Expired</span>
+            <span className="font-semibold text-red-600">{Math.round(licenseProgress)}% Remaining</span>
+            <span>Full Year</span>
+          </div>
+        </div>
+        <div className="mt-4 p-4 bg-slate-50 rounded-lg">
+          <p className="text-sm text-slate-600">
+            <span className="font-semibold text-slate-900">Current Status:</span> Your license is active and will expire on{" "}
+            <span className="font-semibold text-red-600">
+              {licenseExpiryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          </p>
+        </div>
+      </div>
+
       <div>
         <h3 className="text-2xl font-bold pt-4 text-slate-800">
-          API Credit Purchase Plans
+          License Purchase
         </h3>
-        <div className="grid md:grid-cols-3 gap-6 mt-6">
-            <div
-              key={plans.name}
-              className={`rounded-2xl border-4 ${plans.color} bg-slate-50 p-8 shadow-xl text-center flex flex-col`}
-            >
-              <h4 className="text-3xl font-extrabold mb-2 text-slate-800">
-                {plans.name}
-              </h4>
-              <p className="text-lg font-semibold text-red-600 mb-4">
-                {NGN_FORMAT.format(plans.pricePerYear)} / Year
-              </p>
-              <p className="text-sm text-slate-600 mb-6">
-                {plans.description}
-              </p>
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 text-left space-y-3 mb-6">
-                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
-                  <span>Committed Years</span>
-                  <span className="text-slate-900 font-semibold">
-                    {quote.years} {quote.years > 1 ? "Years" : "Year"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
-                  <span>Base Cost</span>
-                  <span className="text-slate-900 font-semibold">
-                    {NGN_FORMAT.format(quote.subtotal)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
-                  <span>Discount</span>
-                  <span className="text-red-600 font-semibold">
-                    {(quote.discountRate * 100).toFixed(0)}% (
-                    {NGN_FORMAT.format(quote.discountAmount)})
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
-                  <span>Projected Total</span>
-                  <span className="text-slate-900 font-bold">
-                    {NGN_FORMAT.format(quote.total)}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-red-100 text-red-700 py-1 rounded-full mb-6 text-xs font-semibold">
-                {plans.roi}
-              </div>
-              <button
-                onClick={handleIncreaseYears}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors"
-              >
-                Add Year & Recalculate
-              </button>
-              <button className="w-full mt-3 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-colors">
-                Purchase Now
-              </button>
-              {years > 1 && (
-                <button
-                  onClick={handleResetYears}
-                  className="mt-4 text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
-                >
-                  Reset to single-year commitment
-                </button>
-              )}
+        <div className="mt-6">
+          <div className="rounded-2xl border-4 border-red-600 bg-slate-50 p-8 shadow-xl text-center flex flex-col">
+            <h4 className="text-3xl font-extrabold mb-2 text-slate-800">
+              Annual License
+            </h4>
+            <p className="text-lg font-semibold text-red-600 mb-4">
+              {NGN_FORMAT.format(10000000)} / Year
+            </p>
+            <p className="text-5xl font-extrabold text-slate-900 mb-2">
+              1 Year
+            </p>
+            <p className="text-lg font-medium text-slate-500 mb-6">
+              Full Access to Nexus Disrupt™ Platform
+            </p>
+            <div className="bg-red-100 text-red-700 py-1 rounded-full mb-6 text-xs font-semibold">
+              Multi-Year Discounts Available
             </div>
+            <button
+              onClick={() => {
+                setLicenseYears(1);
+                setShowCalculationModal(true);
+              }}
+              className="w-full mt-auto bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              Calculate & Purchase License
+            </button>
+          </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-slate-800">
-            License Term Remaining
-          </h3>
-          <p className="text-sm text-slate-500 mt-2">
-            Use the slider to track how much time is left on your active
-            licensing term.
-          </p>
-          <div className="flex items-center gap-4 mt-6">
-            <input
-              type="range"
-              min="0"
-              max="60"
-              step="1"
-              value={licenseRemainingMonths}
-              onChange={(e) =>
-                setLicenseRemainingMonths(parseInt(e.target.value, 10))
-              }
-              className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-600 accent-red-600"
-            />
-            <span className="font-bold text-red-600 w-20 text-right">
-              {licenseRemainingMonths} mo
-            </span>
-          </div>
-          <div className="flex justify-between text-xs text-slate-400 uppercase mt-3 font-semibold">
-            <span>Newly Activated</span>
-            <span>Renewal Due</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-4">
-            Approx. {(licenseRemainingMonths / 12).toFixed(1)} years remaining
-            on your license commitment.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-slate-800">
-            Licensing Summary
-          </h3>
-          <ul className="mt-4 space-y-3 text-sm text-slate-600">
-            <li className="flex items-center justify-between">
-              <span>Active Contract Value</span>
-              <span className="font-semibold text-slate-900">
-                {NGN_FORMAT.format(quote.total)}
-              </span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>Discount Secured</span>
-              <span className="font-semibold text-red-600">
-                {(quote.discountRate * 100).toFixed(0)}%
-              </span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>Next Review Checkpoint</span>
-              <span className="font-semibold text-slate-900">
-                2025-12-15
-              </span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>Relationship Manager</span>
-              <span className="font-semibold text-slate-900">
-                adeola.ogunleye@nexusdisrupt.com
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
+
       <div>
         <h3 className="text-xl font-bold pt-4 text-slate-800">
-          Recent Billing & Usage History
+          Recent License & Billing History
         </h3>
         <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden mt-6">
           <table className="min-w-full divide-y divide-slate-200">
@@ -536,16 +580,13 @@ const BillingPage = () => {
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  Term
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  Discount
+                  Transaction
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                   Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Duration
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                   Status
@@ -553,33 +594,30 @@ const BillingPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {licensingHistory.map((item, index) => (
-                <tr key={index}>
+              {licenseHistory.map((item, index) => (
+                <tr key={index} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                     {item.date}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                     {item.transaction}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    {item.term}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                    {item.discount}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
-                    {item.amount}
+                    {NGN_FORMAT.format(item.amount)}
                   </td>
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm font-semibold ${
-                      item.status === "Active"
-                        ? "text-green-600"
-                        : item.status === "Scheduled"
-                        ? "text-red-600"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    {item.status}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    {item.duration}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                        item.status === "Active"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -587,63 +625,14 @@ const BillingPage = () => {
           </table>
         </div>
       </div>
-      {showQuoteModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowQuoteModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-2xl font-bold text-slate-900">
-                Updated Licensing Quote
-              </h3>
-              <button
-                onClick={() => setShowQuoteModal(false)}
-                className="text-slate-400 hover:text-red-600"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="mt-6 space-y-4 text-sm text-slate-600">
-              <div className="flex items-center justify-between">
-                <span>Years Committed</span>
-                <span className="font-semibold text-slate-900">
-                  {quote.years} {quote.years > 1 ? "Years" : "Year"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Base Cost</span>
-                <span className="font-semibold text-slate-900">
-                  {NGN_FORMAT.format(quote.subtotal)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Discount Applied</span>
-                <span className="font-semibold text-red-600">
-                  {(quote.discountRate * 100).toFixed(0)}% (
-                  {NGN_FORMAT.format(quote.discountAmount)})
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Total Payable</span>
-                <span className="text-red-600 font-bold text-lg">
-                  {NGN_FORMAT.format(quote.total)}
-                </span>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowQuoteModal(false)}
-                className="rounded-full px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+
+      {showCalculationModal && (
+        <LicenseCalculationModal
+          years={licenseYears}
+          onYearsChange={setLicenseYears}
+          onClose={() => setShowCalculationModal(false)}
+          onPurchase={handlePurchaseLicense}
+        />
       )}
     </div>
   );
@@ -1033,7 +1022,7 @@ const AdminPortal = ({ onLogout }) => {
   const pageTitles = {
     dashboard: "Administrator Dashboard",
     users: "User Management",
-    billing: "Billing & API Credits",
+    billing: "License & Billing Management",
     api: "API Integration",
     settings: "Settings & AI Controls",
   };
