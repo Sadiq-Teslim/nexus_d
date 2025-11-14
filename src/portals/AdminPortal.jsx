@@ -1428,163 +1428,6 @@ const ApiDocs = () => {
 
       <ArchitectureFlow />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Submit Transaction Section */}
-        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Send size={20} className="text-green-600" />
-                Submit Transaction
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">POST /transactions</p>
-            </div>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-              POST
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-semibold text-slate-700 mb-2 block">
-                Request Payload (JSON)
-              </label>
-              <textarea
-                value={requestPayload}
-                onChange={(e) => setRequestPayload(e.target.value)}
-                className="w-full h-40 p-4 rounded-lg bg-slate-900 text-green-400 font-mono text-xs border-2 border-slate-300 focus:border-red-500 focus:outline-none resize-none"
-                placeholder="Enter JSON payload..."
-              />
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-lg">
-              <p className="text-xs font-semibold text-slate-600 mb-1">Headers:</p>
-              <CodeSnippet lang="http" copyable>{`x-api-key: ${apiKey}`}</CodeSnippet>
-            </div>
-
-            <button
-              onClick={handleSubmitTransaction}
-              disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader size={18} className="animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Play size={18} />
-                  Submit Transaction
-                </>
-              )}
-            </button>
-
-            {submitResponse && (
-              <div className={`p-4 rounded-lg border-2 ${
-                submitResponse.status === 202 
-                  ? "bg-green-50 border-green-200" 
-                  : "bg-red-50 border-red-200"
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  {submitResponse.status === 202 ? (
-                    <CheckCircle className="text-green-600" size={18} />
-                  ) : (
-                    <XCircle className="text-red-600" size={18} />
-                  )}
-                  <span className="font-semibold text-slate-900">
-                    Response {submitResponse.status}
-                  </span>
-                </div>
-                <CodeSnippet lang="json" copyable>
-                  {submitResponse.data 
-                    ? JSON.stringify(submitResponse.data, null, 2)
-                    : submitResponse.error}
-                </CodeSnippet>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Get Result Section */}
-        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <RefreshCw size={20} className="text-blue-600" />
-                Get Result
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">GET /transactions/:id/result</p>
-            </div>
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-              GET
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-semibold text-slate-700 mb-2 block">
-                Transaction ID
-              </label>
-              <input
-                type="text"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-                placeholder="Enter transaction ID or submit a transaction first"
-                className="w-full p-3 rounded-lg bg-slate-50 border-2 border-slate-300 focus:border-blue-500 focus:outline-none font-mono text-sm"
-              />
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-lg">
-              <p className="text-xs font-semibold text-slate-600 mb-1">Headers:</p>
-              <CodeSnippet lang="http" copyable>{`x-api-key: ${apiKey}`}</CodeSnippet>
-            </div>
-
-            <button
-              onClick={handleGetResult}
-              disabled={isFetching || !transactionId}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              {isFetching ? (
-                <>
-                  <Loader size={18} className="animate-spin" />
-                  Fetching Result...
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={18} />
-                  Get Result
-                </>
-              )}
-            </button>
-
-            {resultResponse && (
-              <div className={`p-4 rounded-lg border-2 ${
-                resultResponse.status === 200 
-                  ? "bg-blue-50 border-blue-200" 
-                  : "bg-red-50 border-red-200"
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  {resultResponse.status === 200 ? (
-                    <CheckCircle className="text-blue-600" size={18} />
-                  ) : (
-                    <XCircle className="text-red-600" size={18} />
-                  )}
-                  <span className="font-semibold text-slate-900">
-                    Response {resultResponse.status}
-                  </span>
-                </div>
-                <CodeSnippet lang="json" copyable>
-                  {resultResponse.data 
-                    ? JSON.stringify(resultResponse.data, null, 2)
-                    : resultResponse.error}
-                </CodeSnippet>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Code Examples Section */}
       <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg">
         <h3 className="text-xl font-bold text-slate-900 mb-4">Code Examples</h3>
@@ -1599,10 +1442,10 @@ const ApiDocs = () => {
   -H "Content-Type: application/json" \\
   -d '{
     "amount": 50000,
-    "sender": "ACC123456",
-    "receiver": "ACC789012",
-    "currency": "USD",
-    "timestamp": "2024-01-15T10:30:00Z"
+    "sender_id": "ACC_123456",
+    "receiver_id": "ACC_789012",
+    "device_id": "DEVICE_39",
+    "merchant_id": "VNDT_01"
   }'`}</CodeSnippet>
           </div>
           <div>
@@ -1617,11 +1460,11 @@ const ApiDocs = () => {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    amount: 50000,
-    sender: 'ACC123456',
-    receiver: 'ACC789012',
-    currency: 'USD',
-    timestamp: new Date().toISOString()
+    "amount": 50000,
+    "sender_id": "ACC_123456",
+    "receiver_id": "ACC_789012",
+    "device_id": "DEVICE_39",
+    "merchant_id": "VNDT_01"
   })
 });
 
@@ -1658,7 +1501,10 @@ console.log(data);`}</CodeSnippet>
             <p className="text-sm text-slate-600 mb-3">Retrieve the fraud analysis result for a submitted transaction.</p>
             <div className="text-xs text-slate-500">
               <p className="font-semibold mb-1">Response: 200 OK</p>
-              <CodeSnippet lang="json">{`{
+              {/* <CodeSnippet lang="json">
+
+                {`
+              {
   "transactionId": "uuid",
   "status": "completed",
   "timestamp": "2024-01-15T10:35:00Z",
@@ -1689,7 +1535,43 @@ console.log(data);`}</CodeSnippet>
     "narrative": "Transaction analysis report...",
     "dateGenerated": "2024-01-15T10:35:00Z"
   }
-}`}</CodeSnippet>
+}`
+                }</CodeSnippet> */}
+                <CodeSnippet lang="json">
+                {`{
+    "analysis": {
+        "confidence": 5,
+        "gnnScore": 0.0452,
+        "riskLevel": "LOW"
+    },
+    "ccn": {
+        "ccnId": "CCN-20240115-ABC",
+        "dateGenerated": "2025-11-14T03:54:31.488608Z",
+        "indicators": [
+            "Transaction Amount Anomaly",
+            "Predicted Regulatory Penalty"
+        ],
+        "narrative": "This is a routine monitoring report. Transaction involving ₦8,000,000.00 from ACCT_7044584688 to ACCT_0024600461 via DEVICE_39 and VNDR_01 has been flagged for review. The GNN fraud score is 0.0452 (Risk Score: 4), and the predicted regulatory penalty is ₦9,795.82. The transaction amount is considered an anomaly based on the historical transaction patterns associated with the involved accounts and the predicted regulatory penalty, although below the SAR threshold, warrants further monitoring.",
+        "reportType": "MONITOR",
+        "riskScore": 5
+    },
+    "cdt": {
+        "estimatedLoss": 2448.96,
+        "impactLevel": "LOW",
+        "reputationalDamageScore": 0.1
+    },
+    "timestamp": "2025-11-14T03:54:31.488608Z",
+    "transactionId": "uuid",
+    "status": "completed",
+    "transaction": {
+        "amount": 8000000.0,
+        "device_id": "DEVICE_39",
+        "receiver": "ACCT_0024600461",
+        "sender": "ACCT_7044584688",
+        "timestamp": "2025-11-14T03:54:31.488588Z"
+    }
+}`}
+                </CodeSnippet>
             </div>
           </div>
         </div>
