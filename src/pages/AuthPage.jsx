@@ -98,14 +98,14 @@ const AuthPage = ({ onAuthSuccess = () => {} }) => {
                         <a href="/" className="block text-center text-4xl font-bold text-white sm:text-5xl">Nexus Disrupt™</a>
 
                         <div className="mt-8 flex rounded-full border border-white/10 bg-white/5 p-1">
-                            <button onClick={() => setView('signup')} className={`w-1/2 rounded-full px-4 py-2 text-sm font-semibold transition ${view === 'signup' ? 'bg-zenithRed text-white shadow-lg shadow-zenithRed/30' : 'text-white/60'}`}>Onboard Institution</button>
+                            <button onClick={() => setView('signup')} className={`w-1/2 rounded-full px-4 py-2 text-sm font-semibold transition ${view === 'signup' ? 'bg-zenithRed text-white shadow-lg shadow-zenithRed/30' : 'text-white/60'}`}>Admin Login</button>
                             <button onClick={() => setView('signin')} className={`w-1/2 rounded-full px-4 py-2 text-sm font-semibold transition ${view === 'signin' ? 'bg-zenithRed text-white shadow-lg shadow-zenithRed/30' : 'text-white/60'}`}>Manager Login</button>
                         </div>
 
                         {view === 'signup' ? (
                             <div className="mt-10">
-                                <h2 className="text-3xl font-bold text-white">Create an Admin Account</h2>
-                                <p className="mt-3 text-sm text-white/60">Begin the process to secure your institution.</p>
+                                <h2 className="text-3xl font-bold text-white">Admin Portal Access</h2>
+                                <p className="mt-3 text-sm text-white/60">Log in with the credentials provided to your super user during onboarding.</p>
                                 <form onSubmit={handleSignupSubmit} className="mt-8 space-y-5">
                                     <div>
                                         <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Institution Name</label>
@@ -113,14 +113,14 @@ const AuthPage = ({ onAuthSuccess = () => {} }) => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Administrator Email</label>
-                                        <input name="adminEmail" type="email" placeholder="j.doe@premierbank.com" className={commonInputClasses} disabled={isLoading} required />
+                                        <input name="adminEmail" type="email" placeholder="admin@premierbank.com" className={commonInputClasses} disabled={isLoading} required />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Password</label>
                                         <input name="password" type="password" placeholder="••••••••" className={commonInputClasses} disabled={isLoading} required />
                                     </div>
                                     <button type="submit" className={commonButtonClasses} disabled={isLoading}>
-                                        {isLoading ? 'Verifying...' : 'Initiate Onboarding'}
+                                        {isLoading ? 'Authenticating...' : 'Secure Login'}
                                     </button>
                                 </form>
                             </div>

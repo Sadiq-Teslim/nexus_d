@@ -1,8 +1,92 @@
 // src/pages/HomePage.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar.jsx';
+import { X, Phone, Mail, MessageCircle } from 'lucide-react';
+
+const ContactModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    const whatsappNumber = "2348028948372";
+    const whatsappMessage = "Hello, I'd like to schedule a call to discuss Nexus Disrupt™ for my institution.";
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={onClose}>
+            <div className="relative w-full max-w-4xl rounded-3xl border-2 border-zenithRed/60 bg-gradient-to-br from-[#ffbac9]/20 via-[#5f0b1c]/50 to-[#120206]/90 p-2 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="rounded-[calc(1.5rem-2px)] bg-black/90 p-8 lg:p-12 backdrop-blur-xl">
+                    <button
+                        onClick={onClose}
+                        className="absolute top-6 right-6 rounded-full bg-white/10 p-2 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+
+                    <div className="text-center mb-10">
+                        <h2 className="text-4xl font-bold text-white mb-4">Get In Touch With Us</h2>
+                        <p className="text-lg text-white/70">Schedule a call to discuss enterprise licensing or onboarding your institution</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                        <div className="space-y-6">
+                            <div className="flex items-start gap-4">
+                                <div className="rounded-full bg-zenithRed/20 p-3">
+                                    <Phone className="text-zenithRed" size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-semibold text-white mb-2">Phone</h3>
+                                    <a href="tel:08028948372" className="text-2xl font-bold text-zenithRed hover:text-white transition-colors">
+                                        08028948372
+                                    </a>
+                                    <p className="text-sm text-white/60 mt-1">Mon - Fri, 9AM - 6PM WAT</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-4">
+                                <div className="rounded-full bg-zenithRed/20 p-3">
+                                    <Mail className="text-zenithRed" size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-semibold text-white mb-2">Email</h3>
+                                    <a href="mailto:support@nexusdisrupt.com" className="text-lg text-white/85 hover:text-zenithRed transition-colors">
+                                        support@nexusdisrupt.com
+                                    </a>
+                                    <p className="text-sm text-white/60 mt-1">Average response: 2 hours</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col justify-center">
+                            <div className="rounded-2xl border-2 border-zenithRed/40 bg-gradient-to-br from-zenithRed/10 to-transparent p-6">
+                                <MessageCircle className="text-zenithRed mx-auto mb-4" size={48} />
+                                <h3 className="text-xl font-semibold text-white text-center mb-4">Quick Response</h3>
+                                <p className="text-sm text-white/70 text-center mb-6">
+                                    Chat with us on WhatsApp for immediate assistance
+                                </p>
+                                <a
+                                    href={whatsappUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block w-full rounded-full bg-gradient-to-r from-green-500 to-green-600 px-6 py-4 text-center text-lg font-bold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-green-500/50"
+                                >
+                                    SCHEDULE A CALL WITH US
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-8">
+                        <p className="text-center text-white/60 text-sm">
+                            Our team is ready to help you secure your institution with Nexus Disrupt™
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const HomePage = () => {
+    const [showContactModal, setShowContactModal] = useState(false);
     useEffect(() => {
         const animatedElements = document.querySelectorAll('[data-animate]');
         if (!animatedElements.length) {
@@ -59,13 +143,13 @@ const HomePage = () => {
                                 Nexus Disrupt™ delivers autonomous monitoring, network analysis, and immediate freeze actions in one trusted platform. Protect customer funds with measurable certainty.
                             </p>
                             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row" data-animate="fade">
-                                <a
-                                    href="/auth?view=signup"
+                                <button
+                                    onClick={() => setShowContactModal(true)}
                                     className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-white to-[#ffd7de] px-10 py-3 text-base font-semibold text-[#5f0b1c] shadow-xl shadow-[#ff7387]/30 transition-all duration-500 hover:-translate-y-1 hover:shadow-[#ff4d6a]/40"
                                     aria-label="Onboard your institution"
                                 >
                                     Onboard Your Institution
-                                </a>
+                                </button>
                                 <a
                                     href="#how-it-works"
                                     className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/5 px-10 py-3 text-base font-semibold text-white transition-all duration-500 hover:-translate-y-1 hover:border-white/60 hover:bg-white/15"
@@ -246,9 +330,12 @@ const HomePage = () => {
                                         <li className="flex items-center gap-4"><span className="h-3 w-3 rounded-full bg-zenithRed flex-shrink-0"></span>Personalized Onboarding & Strategic Success Manager</li>
                                     </ul>
 
-                                    <a href="/auth?view=contact" className="mt-12 block w-full rounded-full bg-gradient-to-r from-zenithRed to-red-600 px-8 py-4 text-center text-lg font-semibold text-white shadow-lg transition-all duration-500 hover:scale-[1.02] hover:shadow-zenithRed/50 focus:outline-none focus:ring-2 focus:ring-zenithRed focus:ring-opacity-75">
+                                    <button
+                                        onClick={() => setShowContactModal(true)}
+                                        className="mt-12 block w-full rounded-full bg-gradient-to-r from-zenithRed to-red-600 px-8 py-4 text-center text-lg font-semibold text-white shadow-lg transition-all duration-500 hover:scale-[1.02] hover:shadow-zenithRed/50 focus:outline-none focus:ring-2 focus:ring-zenithRed focus:ring-opacity-75"
+                                    >
                                         Secure Your Enterprise License
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -373,6 +460,8 @@ const HomePage = () => {
                     </div>
                 </div>
             </footer>
+
+            <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
         </div>
     );
 };
