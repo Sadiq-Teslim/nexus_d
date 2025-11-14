@@ -6,7 +6,7 @@ import { X, Phone, Mail, MessageCircle } from 'lucide-react';
 const ContactModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
-    const whatsappNumber = "2348028948372";
+    const whatsappNumber = "2349066562055";
     const whatsappMessage = "Hello, I'd like to schedule a call to discuss Nexus Disrupt™ for my institution.";
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
@@ -34,8 +34,8 @@ const ContactModal = ({ isOpen, onClose }) => {
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-semibold text-white mb-2">Phone</h3>
-                                    <a href="tel:08028948372" className="text-2xl font-bold text-zenithRed hover:text-white transition-colors">
-                                        08028948372
+                                    <a href="tel:09066562055" className="text-2xl font-bold text-zenithRed hover:text-white transition-colors">
+                                        09066562055
                                     </a>
                                     <p className="text-sm text-white/60 mt-1">Mon - Fri, 9AM - 6PM WAT</p>
                                 </div>
@@ -389,7 +389,7 @@ const HomePage = () => {
                                 <div>
                                     <p className="text-xl font-bold text-white">Direct Line</p>
                                     <p className="text-3xl tracking-wider text-zenithRed font-semibold mt-2"> {/* Largest text for phone number */}
-                                        <a href="tel:08028948372" className="hover:text-white transition-colors duration-300">08028948372</a>
+                                        <a href="tel:09066562055" className="hover:text-white transition-colors duration-300">09066562055</a>
                                     </p>
                                     <p className="text-base text-white/60 mt-2">Available during business hours (Mon - Fri)</p>
                                 </div>
