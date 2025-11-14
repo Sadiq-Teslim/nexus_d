@@ -4,7 +4,6 @@ import logo from "../assets/nobglogo.png";
 import {
   Plus,
   Trash2,
-  Key,
   LayoutDashboard,
   Users,
   FileText,
@@ -13,9 +12,7 @@ import {
   Wallet,
   X,
   ShieldCheck,
-  Copy,
   Eye,
-  EyeOff,
   Zap,
   Cpu,
   Calendar,
@@ -82,7 +79,7 @@ const KpiCard = ({
   title,
   value,
   subtitle,
-  icon: Icon,
+  icon: Icon, // eslint-disable-line no-unused-vars
   colorClass = "text-slate-600",
   trend,
 }) => (
@@ -1356,105 +1353,101 @@ async function streamTransaction(transactionData) {
 };
 
 const SettingsPanel = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [apiKey, setApiKey] = useState("nd_prod_******************xyz");
-  const [showKey, setShowKey] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [gnnThreshold, setGnnThreshold] = useState(0.92);
-  const generateKey = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setApiKey(
-        `nd_prod_${[...Array(22)]
-          .map(() => Math.random().toString(36)[2])
-          .join("")}`
-      );
-      setIsGenerating(false);
-      setShowKey(true);
-    }, 2000);
-  };
-  const copyKey = () => {
-    const temp = document.createElement("textarea");
-    temp.value = apiKey;
-    document.body.appendChild(temp);
-    temp.select();
-    document.execCommand("copy");
-    document.body.removeChild(temp);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const [licenseNotifications, setLicenseNotifications] = useState(true);
+  const [autoRenewal, setAutoRenewal] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  
+  // License configuration
+  const licenseStart = new Date("2025-01-01");
+  const licenseEnd = new Date("2025-12-31");
+  const currentDate = new Date();
+  const daysRemaining = Math.ceil((licenseEnd - currentDate) / (1000 * 60 * 60 * 24));
+  const isLicenseActive = currentDate >= licenseStart && currentDate <= licenseEnd;
+  
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-semibold text-slate-900">
-          Settings & AI Controls
+          License Settings & AI Controls
         </h2>
         <p className="text-sm text-slate-600">
-          Manage your integration credentials and AI sensitivity.
+          Manage your license configuration and AI sensitivity settings.
         </p>
       </div>
-      <div className="max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 space-y-8 shadow-lg">
-        <div>
-          <h3 className="font-semibold text-slate-900 text-xl mb-1">
-            API Key Management
-          </h3>
-          <p className="text-sm text-slate-500 mb-4">
-            Use this key to authenticate your Transaction Stream. Ensure it is
-            secured via mTLS.
-          </p>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 p-3">
-            <Key size={16} className="text-red-600" />
-            <input
-              readOnly
-              value={showKey ? apiKey : "•".repeat(30)}
-              className="flex-1 bg-transparent font-mono text-sm text-slate-600 focus:outline-none"
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="text-slate-500 hover:text-red-600"
-            >
-              <span className="sr-only">Toggle visibility</span>
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-            <button
-              onClick={copyKey}
-              className="text-slate-500 hover:text-red-600"
-            >
-              <span className="sr-only">Copy key</span>
-              {copied ? (
-                <ShieldCheck size={16} className="text-green-600" />
-              ) : (
-                <Copy size={16} />
-              )}
-            </button>
-          </div>
-          <div className="mt-4">
-            <button
-              onClick={generateKey}
-              disabled={isGenerating}
-              className="flex items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/50 border-t-white"></div>
-                  <span>Generating...</span>
-                </>
-              ) : (
-                "Generate New Key"
-              )}
-            </button>
-            <p className="text-xs text-slate-500 mt-2">
-              Generating a new key will invalidate the old one immediately.
+
+      {/* License Status Overview */}
+      <div className="max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="font-semibold text-slate-900 text-xl mb-1">
+              License Status Overview
+            </h3>
+            <p className="text-sm text-slate-500">
+              Current license information and system access status.
             </p>
           </div>
+          <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+            isLicenseActive 
+              ? "bg-green-100 text-green-700" 
+              : "bg-red-100 text-red-700"
+          }`}>
+            {isLicenseActive ? "Active" : "Expired"}
+          </div>
         </div>
-        <div className="border-t border-slate-200 pt-8">
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="text-center p-4 bg-slate-50 rounded-xl">
+            <p className="text-2xl font-bold text-slate-900">{daysRemaining}</p>
+            <p className="text-sm text-slate-500">Days Remaining</p>
+          </div>
+          <div className="text-center p-4 bg-slate-50 rounded-xl">
+            <p className="text-2xl font-bold text-slate-900">
+              {licenseEnd.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+            </p>
+            <p className="text-sm text-slate-500">Expiry Date</p>
+          </div>
+          <div className="text-center p-4 bg-slate-50 rounded-xl">
+            <p className="text-2xl font-bold text-red-600">Annual</p>
+            <p className="text-sm text-slate-500">License Type</p>
+          </div>
+        </div>
+
+        {/* License renewal warning */}
+        {daysRemaining <= 30 && daysRemaining > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3 mb-6">
+            <AlertTriangle className="text-orange-600 mt-0.5 flex-shrink-0" size={20} />
+            <div>
+              <p className="font-semibold text-orange-900">License Renewal Required</p>
+              <p className="text-sm text-orange-700 mt-1">
+                Your license expires in {daysRemaining} days. Renew now to avoid service interruption.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isLicenseActive && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 mb-6">
+            <XCircle className="text-red-600 mt-0.5 flex-shrink-0" size={20} />
+            <div>
+              <p className="font-semibold text-red-900">License Expired</p>
+              <p className="text-sm text-red-700 mt-1">
+                Your license has expired. Please renew to restore full system access and functionality.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 space-y-8 shadow-lg">
+        {/* AI Sensitivity Controls */}
+        <div>
           <h3 className="font-semibold text-slate-900 text-xl mb-1">
             AI Sensitivity Controls (GNN Threshold)
           </h3>
           <p className="text-sm text-slate-500 mb-4">
-            Adjust the GNN's confidence level required to trigger the Agentic
-            Micro-Freeze command.
+            Adjust the GNN's confidence level required to trigger the Agentic Micro-Freeze command.
+            {!isLicenseActive && " (Requires active license)"}
           </p>
           <div className="flex items-center gap-4">
             <input
@@ -1464,16 +1457,87 @@ const SettingsPanel = () => {
               step="0.01"
               value={gnnThreshold}
               onChange={(e) => setGnnThreshold(parseFloat(e.target.value))}
-              className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer range-lg focus:outline-none focus:ring-2 focus:ring-red-600 accent-red-600"
+              disabled={!isLicenseActive}
+              className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer range-lg focus:outline-none focus:ring-2 focus:ring-red-600 ${
+                isLicenseActive ? "bg-slate-200 accent-red-600" : "bg-red-200 accent-red-300"
+              }`}
             />
-            <span className="font-bold text-red-600 w-16">{`${(
-              gnnThreshold * 100
-            ).toFixed(0)}%`}</span>
+            <span className={`font-bold w-16 ${isLicenseActive ? "text-red-600" : "text-red-400"}`}>
+              {`${(gnnThreshold * 100).toFixed(0)}%`}
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-2">
-            Current Threshold: A GNN Score of {gnnThreshold} or higher triggers
-            autonomous disruption.
+            Current Threshold: A GNN Score of {gnnThreshold} or higher triggers autonomous disruption.
+            {!isLicenseActive && " (Adjustment disabled - license expired)"}
           </p>
+        </div>
+
+        {/* License Preferences */}
+        <div className="border-t border-slate-200 pt-8">
+          <h3 className="font-semibold text-slate-900 text-xl mb-4">
+            License Preferences
+          </h3>
+          
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+              <div>
+                <p className="font-medium text-slate-900">Renewal Notifications</p>
+                <p className="text-sm text-slate-500">
+                  Receive email alerts about upcoming license renewals
+                </p>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={licenseNotifications}
+                  onChange={(e) => setLicenseNotifications(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-4 peer-focus:ring-red-300"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+              <div>
+                <p className="font-medium text-slate-900">Auto-Renewal</p>
+                <p className="text-sm text-slate-500">
+                  Automatically renew license before expiration (requires saved payment method)
+                </p>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={autoRenewal}
+                  onChange={(e) => setAutoRenewal(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-4 peer-focus:ring-red-300"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+              <div>
+                <p className="font-medium text-slate-900">Maintenance Mode</p>
+                <p className="text-sm text-slate-500">
+                  Temporarily disable fraud detection during system maintenance
+                </p>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={maintenanceMode}
+                  onChange={(e) => setMaintenanceMode(e.target.checked)}
+                  disabled={!isLicenseActive}
+                  className="peer sr-only"
+                />
+                <div className={`peer h-6 w-11 rounded-full after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-focus:ring-4 ${
+                  isLicenseActive 
+                    ? "bg-slate-200 after:border-slate-300 peer-checked:bg-red-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-red-300"
+                    : "bg-red-200 after:border-red-300 cursor-not-allowed"
+                }`}></div>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>
