@@ -1,8 +1,6 @@
 /* eslint-disable no-unused-vars */
 // src/portals/ManagerPortal.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import ReactFlow, { Background, Controls, MarkerType } from "reactflow";
-import "reactflow/dist/style.css";
 import logo from "../assets/nobglogo.png";
 import {
   LogOut,
@@ -20,9 +18,12 @@ import {
   CheckCircle,
   Undo2,
   Zap,
+  Download,
+  FileDown,
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 
-// --- INLINED STYLES & MOCK SERVICE ---
+// --- INLINED STYLES & SERVICES ---
 
 const GlobalStyles = () => (
   <style>{`
@@ -39,7 +40,7 @@ const NGN_FORMATTER = new Intl.NumberFormat("en-NG", {
   minimumFractionDigits: 0,
 });
 
-const MOCK_TRANSACTIONS = [
+const TRANSACTIONS = [
   {
     id: "TXN1001",
     amount: 85000,
@@ -97,7 +98,228 @@ const MOCK_TRANSACTIONS = [
   })),
 ];
 
-const MOCK_CCN_REPORT = (caseData) =>
+// --- CCN GENERATION SYSTEM ---
+
+const AML_INDICATORS = [
+  "Structuring",
+  "Smurfing",
+  "Unusual Activity Pattern",
+  "Rapid Movement of Funds",
+  "Suspicious Account Relationship",
+  "High-Risk Geographic Location",
+  "Transaction Amount Anomaly",
+  "Time-Based Pattern Anomaly",
+  "Network Analysis Flag",
+  "Behavioral Deviation",
+];
+
+const generateBVN = () => {
+  return `BVN${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+};
+
+const generateAccountNumber = () => {
+  return `ACC...${Math.floor(1000 + Math.random() * 9000)}`;
+};
+
+const generateNarrative = (ccn) => {
+  const indicatorText = ccn.indicators.join(", ");
+  const riskLevel = ccn.riskScore >= 90 ? "critical" : ccn.riskScore >= 85 ? "high" : "moderate";
+  const narratives = {
+    STR: [
+      `Transaction ${ccn.sourceAccount} → ${ccn.destinationAccount} exhibits ${indicatorText.toLowerCase()}. The transaction pattern suggests potential money laundering activities with a ${riskLevel} risk profile. Immediate regulatory review recommended.`,
+      `Suspicious transaction flagged due to ${indicatorText.toLowerCase()}. Analysis indicates structured transactions designed to evade reporting thresholds. Risk assessment: ${riskLevel}.`,
+      `Multiple red flags detected: ${indicatorText.toLowerCase()}. The transaction flow pattern is consistent with known money laundering typologies. Risk score: ${ccn.riskScore}%.`,
+    ],
+    SAR: [
+      `Suspicious Activity Report generated for transaction involving ${ccn.sourceAccount} → ${ccn.destinationAccount}. Indicators: ${indicatorText.toLowerCase()}. This activity warrants immediate investigation due to ${riskLevel} risk indicators.`,
+      `SAR filed based on ${indicatorText.toLowerCase()}. The transaction pattern demonstrates characteristics consistent with financial crime. Risk level: ${riskLevel}.`,
+      `Suspicious activity detected with indicators: ${indicatorText.toLowerCase()}. The transaction exhibits multiple anomalies suggesting potential criminal activity. Risk assessment: ${riskLevel} (${ccn.riskScore}%).`,
+    ],
+  };
+  const typeNarratives = narratives[ccn.reportType] || narratives.STR;
+  return typeNarratives[Math.floor(Math.random() * typeNarratives.length)];
+};
+
+const generateCCN = (caseData, index = 0) => {
+  const now = new Date();
+  const daysAgo = Math.floor(Math.random() * 90);
+  const generatedDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+  
+  const reportType = Math.random() < 0.6 ? "STR" : "SAR";
+  const riskScore = Math.floor(80 + Math.random() * 20);
+  const numIndicators = Math.floor(2 + Math.random() * 3);
+  const selectedIndicators = AML_INDICATORS.sort(() => Math.random() - 0.5).slice(0, numIndicators);
+  
+  const year = generatedDate.getFullYear();
+  const month = String(generatedDate.getMonth() + 1).padStart(2, "0");
+  const day = String(generatedDate.getDate()).padStart(2, "0");
+  const sequence = String(index + 1).padStart(3, "0");
+  const ccnId = `CCN-${year}${month}${day}-${sequence}`;
+  
+  return {
+    ccnId,
+    reportType,
+    riskScore,
+    indicators: selectedIndicators,
+    dateGenerated: generatedDate.toISOString(),
+    narrative: "",
+    sourceAccount: caseData?.source || generateAccountNumber(),
+    destinationAccount: caseData?.destination || generateAccountNumber(),
+    sourceBVN: generateBVN(),
+    destinationBVN: generateBVN(),
+    transactionAmount: caseData?.amount || Math.floor(100000 + Math.random() * 5000000),
+    transactionId: caseData?.id || `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+  };
+};
+
+const generateCCNReports = (caseData, count = 15) => {
+  const reports = Array.from({ length: count }, (_, i) => generateCCN(caseData, i));
+  // Generate narratives after all reports are created
+  return reports.map((report) => ({
+    ...report,
+    narrative: generateNarrative(report),
+  }));
+};
+
+const exportToCSV = (ccnReports) => {
+  const headers = [
+    "CCN ID",
+    "Report Type",
+    "Risk Score",
+    "Indicators",
+    "Date Generated",
+    "Source Account",
+    "Destination Account",
+    "Transaction Amount",
+    "Narrative Summary",
+  ];
+  
+  const rows = ccnReports.map((ccn) => [
+    ccn.ccnId,
+    ccn.reportType,
+    ccn.riskScore,
+    ccn.indicators.join("; "),
+    new Date(ccn.dateGenerated).toLocaleDateString(),
+    ccn.sourceAccount,
+    ccn.destinationAccount,
+    NGN_FORMATTER.format(ccn.transactionAmount),
+    ccn.narrative.replace(/\n/g, " "),
+  ]);
+  
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+  ].join("\n");
+  
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `CCN_Reports_${new Date().toISOString().split("T")[0]}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportToPDF = (ccnReports) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  let yPosition = margin;
+  
+  ccnReports.forEach((ccn, index) => {
+    if (yPosition > pageHeight - 60) {
+      doc.addPage();
+      yPosition = margin;
+    }
+    
+    // Header
+    doc.setFontSize(16);
+    doc.setFont(undefined, "bold");
+    doc.text("Compliance Case Number (CCN) Report", margin, yPosition);
+    yPosition += 10;
+    
+    // CCN ID
+    doc.setFontSize(12);
+    doc.setFont(undefined, "bold");
+    doc.text(`CCN ID: ${ccn.ccnId}`, margin, yPosition);
+    yPosition += 7;
+    
+    // Report Type and Risk Score
+    doc.setFontSize(10);
+    doc.setFont(undefined, "normal");
+    doc.text(`Report Type: ${ccn.reportType}`, margin, yPosition);
+    doc.text(`Risk Score: ${ccn.riskScore}%`, pageWidth - margin - 40, yPosition);
+    yPosition += 7;
+    
+    // Date Generated
+    doc.text(
+      `Date Generated: ${new Date(ccn.dateGenerated).toLocaleDateString()}`,
+      margin,
+      yPosition
+    );
+    yPosition += 7;
+    
+    // Transaction Details
+    doc.setFont(undefined, "bold");
+    doc.text("Transaction Details:", margin, yPosition);
+    yPosition += 6;
+    doc.setFont(undefined, "normal");
+    doc.text(`Transaction ID: ${ccn.transactionId}`, margin + 5, yPosition);
+    yPosition += 5;
+    doc.text(`Amount: ${NGN_FORMATTER.format(ccn.transactionAmount)}`, margin + 5, yPosition);
+    yPosition += 5;
+    doc.text(`Source: ${ccn.sourceAccount} (BVN: ${ccn.sourceBVN})`, margin + 5, yPosition);
+    yPosition += 5;
+    doc.text(
+      `Destination: ${ccn.destinationAccount} (BVN: ${ccn.destinationBVN})`,
+      margin + 5,
+      yPosition
+    );
+    yPosition += 7;
+    
+    // Indicators
+    doc.setFont(undefined, "bold");
+    doc.text("AML Indicators:", margin, yPosition);
+    yPosition += 6;
+    doc.setFont(undefined, "normal");
+    ccn.indicators.forEach((indicator) => {
+      doc.text(`• ${indicator}`, margin + 5, yPosition);
+      yPosition += 5;
+    });
+    yPosition += 3;
+    
+    // Narrative
+    doc.setFont(undefined, "bold");
+    doc.text("Narrative Summary:", margin, yPosition);
+    yPosition += 6;
+    doc.setFont(undefined, "normal");
+    const narrativeLines = doc.splitTextToSize(ccn.narrative, pageWidth - 2 * margin - 10);
+    narrativeLines.forEach((line) => {
+      if (yPosition > pageHeight - 20) {
+        doc.addPage();
+        yPosition = margin;
+      }
+      doc.text(line, margin + 5, yPosition);
+      yPosition += 5;
+    });
+    
+    yPosition += 10;
+    
+    // Separator line
+    if (index < ccnReports.length - 1) {
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 10;
+    }
+  });
+  
+  doc.save(`CCN_Reports_${new Date().toISOString().split("T")[0]}.pdf`);
+};
+
+const generateCCNReport = (caseData) =>
   `INCIDENT ID: ${
     caseData.id
   }\nAI-GENERATED COMPLIANCE MEMORANDUM\nSTATUS: PENDING HUMAN AUTHORIZATION\n\n1. ACTION TAKEN: Autonomous Micro-Freeze executed on ${
@@ -110,18 +332,18 @@ const MOCK_CCN_REPORT = (caseData) =>
     caseData.source
   }.\n3. CONSEQUENCE ANALYSIS (CDT): Failure to act carried a 98.5% confidence of regulatory non-compliance, with an estimated Regulatory Penalty Value of 850,000,000 NGN and a Reputational Damage Score of 9.2 (Critical).\n4. RECOMMENDATION: Authorize Formal Hold and proceed with regulatory filing.`;
 
-const mockApiService = {
+const apiService = {
   fetchTransactions: () =>
-    new Promise((resolve) => setTimeout(() => resolve(MOCK_TRANSACTIONS), 500)),
+    new Promise((resolve) => setTimeout(() => resolve(TRANSACTIONS), 500)),
   authorizeHold: (id) => {
-    const txn = MOCK_TRANSACTIONS.find((t) => t.id === id);
+    const txn = TRANSACTIONS.find((t) => t.id === id);
     return Promise.resolve({ ...txn, status: "AUTHORIZED HOLD" });
   },
   releaseFunds: (id) => {
-    const txn = MOCK_TRANSACTIONS.find((t) => t.id === id);
+    const txn = TRANSACTIONS.find((t) => t.id === id);
     return Promise.resolve({ ...txn, status: "CLEAN" });
   },
-  MOCK_CCN_REPORT: MOCK_CCN_REPORT,
+  generateCCNReport: generateCCNReport,
 };
 
 const formatRelativeTime = (input) => {
@@ -240,7 +462,7 @@ const OperationalDashboard = ({ onViewDetails }) => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const PAGE_SIZE = 10;
   useEffect(() => {
-    mockApiService.fetchTransactions().then(setTransactions);
+    apiService.fetchTransactions().then(setTransactions);
   }, []);
   useEffect(() => {
     if (!transactions.length) return;
@@ -637,7 +859,7 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
-    mockApiService.fetchTransactions().then((data) => {
+    apiService.fetchTransactions().then((data) => {
       if (!mounted) return;
       const queue = data
         .filter(
@@ -764,145 +986,157 @@ const ActiveDisruptions = ({ onSelectCase, refreshToken }) => {
   );
 };
 
-const MiniGNNVisualizer = ({ transaction }) => {
-  const nodes = useMemo(() => {
-    if (!transaction) return [];
-    return [
-      { id: transaction.source, x: 50, y: 100 },
-      { id: transaction.destination, x: 250, y: 100, isExit: true },
-      { id: "...", x: 150, y: 200 },
-    ];
-  }, [transaction]);
-  const edges = useMemo(() => {
-    if (!transaction) return [];
-    return [
-      { from: transaction.source, to: transaction.destination },
-      { from: "...", to: transaction.source },
-    ];
-  }, [transaction]);
-  return (
-    <svg width="100%" height="100%" viewBox="0 0 300 250">
-      {edges.map((edge, i) => {
-        const from = nodes.find((n) => n.id === edge.from);
-        const to = nodes.find((n) => n.id === edge.to);
-        if (!from || !to) return null;
-        return (
-          <line
-            key={i}
-            x1={from.x}
-            y1={from.y}
-            x2={to.x}
-            y2={to.y}
-            stroke="#dc2626"
-            strokeWidth="2"
-            markerEnd="url(#arrowhead)"
-          />
-        );
-      })}
-      {nodes.map((node) => (
-        <g key={node.id}>
-          <circle
-            cx={node.x}
-            cy={node.y}
-            r={node.isExit ? 20 : 16}
-            fill={node.isExit ? "#DC2626" : "#4B5563"}
-            stroke="#FFF"
-            strokeWidth="2"
-          />
-          <text
-            x={node.x}
-            y={node.y + 30}
-            textAnchor="middle"
-            fontSize="10"
-            fill="#FFFFFF"
-            fontWeight="600"
-          >
-            {node.id}
-          </text>
-        </g>
-      ))}
-      <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="8"
-          markerHeight="6"
-          refX="7"
-          refY="3"
-          orient="auto"
-        >
-          <polygon points="0 0, 8 3, 0 6" fill="#DC2626" />
-        </marker>
-      </defs>
-    </svg>
-  );
-};
+const CCNTable = ({ caseData }) => {
+  const [ccnReports, setCcnReports] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(true);
 
-const GNNGraph = ({ nodes = [], edges = [] }) => {
-  const nodeTypes = useMemo(
-    () => ({
-      gnnNode: ({ data }) => (
-        <div
-          className={`rounded-full px-4 py-2 text-xs font-semibold shadow-lg shadow-slate-900/40 ${
-            data.isExit
-              ? "bg-red-600 text-white"
-              : "bg-white text-slate-700 border border-slate-200"
-          }`}
-        >
-          {data.label}
-        </div>
-      ),
-    }),
-    []
-  );
+  useEffect(() => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      const reports = generateCCNReports(caseData, 15);
+      setCcnReports(reports);
+      setIsGenerating(false);
+    }, 500);
+  }, [caseData]);
 
-  const flowNodes = useMemo(
-    () =>
-      nodes.map((node) => ({
-        id: node.id,
-        data: node.data,
-        position: node.position,
-        type: "gnnNode",
-      })),
-    [nodes]
-  );
+  const getRiskScoreColor = (score) => {
+    if (score >= 90) return "bg-red-100 text-red-700 border-red-200";
+    if (score >= 85) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    return "bg-green-100 text-green-700 border-green-200";
+  };
 
-  const flowEdges = useMemo(
-    () =>
-      edges.map((edge) => ({
-        ...edge,
-        animated: true,
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#dc2626" },
-        style: { stroke: "#dc2626", strokeWidth: 1.5 },
-      })),
-    [edges]
-  );
+  const getReportTypeColor = (type) => {
+    return type === "STR"
+      ? "bg-blue-100 text-blue-700 border-blue-200"
+      : "bg-purple-100 text-purple-700 border-purple-200";
+  };
 
-  if (!nodes.length) {
+  if (isGenerating) {
     return (
-      <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
-        Awaiting network activity…
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-red-600"></div>
+          <p className="text-sm text-slate-600">Generating CCN reports...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <ReactFlow
-      nodes={flowNodes}
-      edges={flowEdges}
-      nodeTypes={nodeTypes}
-      fitView
-      fitViewOptions={{ padding: 0.2 }}
-      panOnScroll={false}
-      zoomOnScroll={false}
-      proOptions={{ hideAttribution: true }}
-      className="rounded-xl bg-slate-950/80"
-      style={{ width: "100%", height: "100%" }}
-    >
-      <Background gap={24} color="#1e293b" />
-      <Controls showZoom={false} showFitView position="bottom-right" />
-    </ReactFlow>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-xl font-bold text-slate-900 mb-1">
+            Compliance Case Number (CCN) Reports
+          </h4>
+          <p className="text-sm text-slate-600">
+            {ccnReports.length} regulatory reports generated • Ready for submission
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => exportToCSV(ccnReports)}
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-400 hover:shadow-md"
+          >
+            <FileDown size={16} />
+            Export CSV
+          </button>
+          <button
+            onClick={() => exportToPDF(ccnReports)}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 hover:shadow-lg"
+          >
+            <Download size={16} />
+            Export PDF
+          </button>
+        </div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border-2 border-slate-200 bg-white shadow-sm">
+        <table className="w-full">
+          <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
+            <tr>
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                CCN ID
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                Type
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                Risk Score
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                Indicators
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                Date Generated
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                Summary
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200 bg-white">
+            {ccnReports.map((ccn, index) => (
+              <tr
+                key={ccn.ccnId}
+                className="transition-all hover:bg-slate-50 hover:shadow-sm"
+              >
+                <td className="whitespace-nowrap px-5 py-4">
+                  <span className="font-mono text-sm font-bold text-slate-900">
+                    {ccn.ccnId}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-5 py-4">
+                  <span
+                    className={`inline-flex rounded-full border-2 px-3 py-1.5 text-xs font-bold ${getReportTypeColor(
+                      ccn.reportType
+                    )}`}
+                  >
+                    {ccn.reportType}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-5 py-4">
+                  <span
+                    className={`inline-flex rounded-full border-2 px-3 py-1.5 text-xs font-bold ${getRiskScoreColor(
+                      ccn.riskScore
+                    )}`}
+                  >
+                    {ccn.riskScore}%
+                  </span>
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-wrap gap-1.5">
+                    {ccn.indicators.slice(0, 2).map((indicator, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 border border-slate-200"
+                      >
+                        {indicator}
+                      </span>
+                    ))}
+                    {ccn.indicators.length > 2 && (
+                      <span className="inline-flex items-center rounded-md bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 border border-slate-300">
+                        +{ccn.indicators.length - 2} more
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-slate-600">
+                  {new Date(ccn.dateGenerated).toLocaleDateString()}
+                </td>
+                <td className="px-5 py-4">
+                  <p className="max-w-md text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                    {ccn.narrative}
+                  </p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 };
+
 
 const CaseReviewModal = ({
   open,
@@ -926,7 +1160,7 @@ const CaseReviewModal = ({
       onClick={onClose}
     >
       <div
-        className="relative grid w-full max-w-6xl grid-cols-1 gap-0 rounded-3xl border border-slate-300 bg-white shadow-2xl overflow-hidden md:grid-cols-[1.2fr_0.9fr]"
+        className="relative w-full max-w-7xl rounded-3xl border border-slate-300 bg-white shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -936,24 +1170,29 @@ const CaseReviewModal = ({
         >
           <X size={18} />
         </button>
-        <div className="space-y-6 p-8 overflow-y-auto max-h-[80vh] dashboard-scroll">
-          <div>
-            <h3 className="text-2xl font-bold text-slate-900">
-              Evidence Summary: {caseData.id}
-            </h3>
-            <p className="text-sm text-slate-600">
-              AI-surfaced intelligence supporting this freeze.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-              Nexus map visualizer
-            </p>
-            <div className="mt-3 h-40 rounded-xl bg-slate-900">
-              <MiniGNNVisualizer transaction={caseData} />
+        <div className="space-y-6 p-8 overflow-y-auto max-h-[85vh] dashboard-scroll">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-3xl font-bold text-slate-900 mb-2">
+                Case Review: {caseData.id}
+              </h3>
+              <p className="text-sm text-slate-600">
+                Comprehensive compliance analysis and regulatory reporting documentation
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-700">
+                <ShieldAlert size={14} />
+                {caseData.status}
+              </span>
             </div>
           </div>
-          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+          
+          <div className="rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg">
+            <CCNTable caseData={caseData} />
+          </div>
+          
+          <div className="grid gap-6 rounded-2xl border border-slate-200 bg-white p-6 sm:grid-cols-2 shadow-md">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                 Consequence report (CDT)
@@ -1007,159 +1246,62 @@ const CaseReviewModal = ({
               </dl>
             </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-5 rounded-l-3xl bg-slate-50 p-8 border-l border-slate-200">
-          <div>
-            <h3 className="text-xl font-semibold text-slate-900">
-              Cognitive Compliance Narrative (CCN™)
-            </h3>
-            <p className="text-sm text-slate-600">
-              Regulator-ready memo justifying the freeze.
-            </p>
+          
+          <div className="col-span-full rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-md">
+            <div className="mb-4">
+              <h4 className="text-lg font-semibold text-slate-900 mb-1">
+                Compliance Narrative Summary
+              </h4>
+              <p className="text-xs text-slate-600">
+                AI-generated regulatory justification for this case
+              </p>
+            </div>
+            <div className="dashboard-scroll max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-800 p-4 text-xs leading-relaxed text-white/90">
+              <pre className="whitespace-pre-wrap font-mono">
+                {apiService.generateCCNReport(caseData)}
+              </pre>
+            </div>
           </div>
-          <div className="dashboard-scroll flex-1 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-slate-800 p-4 text-xs leading-relaxed text-white/80">
-            <pre className="whitespace-pre-wrap font-mono">
-              {mockApiService.MOCK_CCN_REPORT(caseData)}
-            </pre>
-          </div>
-          <div className="space-y-3 pt-4">
+          
+          <div className="col-span-full flex gap-3 pt-2">
             <button
               onClick={onAuthorize}
               disabled={isProcessing}
-              className={`flex w-full items-center justify-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white shadow-lg shadow-red-600/30 transition ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3.5 text-sm font-semibold uppercase tracking-widest text-white shadow-lg shadow-red-600/30 transition ${
                 isProcessing
                   ? "cursor-not-allowed opacity-70"
-                  : "hover:bg-red-700"
+                  : "hover:bg-red-700 hover:shadow-xl"
               }`}
             >
-              <CheckCircle size={16} />
+              <CheckCircle size={18} />
               {isProcessing ? "Processing…" : "Authorize Formal Hold"}
             </button>
             <button
               onClick={onRelease}
               disabled={isProcessing}
-              className={`flex w-full items-center justify-center gap-2 rounded-full bg-slate-200 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-slate-700 transition ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-200 px-6 py-3.5 text-sm font-semibold uppercase tracking-widest text-slate-700 transition ${
                 isProcessing
                   ? "cursor-not-allowed opacity-60"
-                  : "hover:bg-slate-300"
+                  : "hover:bg-slate-300 hover:shadow-md"
               }`}
             >
-              <Undo2 size={16} />
+              <Undo2 size={18} />
               Release Funds
             </button>
-            {errorMessage && (
-              <p className="text-xs text-red-600 text-center">{errorMessage}</p>
-            )}
           </div>
+          {errorMessage && (
+            <div className="col-span-full">
+              <p className="text-sm text-red-600 text-center bg-red-50 border border-red-200 rounded-lg py-2 px-4">
+                {errorMessage}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-const NexusMapVisualizer = ({ refreshToken }) => {
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
-  const [stats, setStats] = useState({
-    accounts: 0,
-    edges: 0,
-    density: "0.00",
-  });
-  const nodeTypes = useMemo(
-    () => ({
-      custom: ({ data }) => (
-        <div
-          className={`group/node relative p-2 px-4 rounded-full shadow-md text-xs font-semibold ${
-            data.isExit
-              ? "bg-red-600 text-white animate-pulse"
-              : "bg-white text-slate-800 border border-slate-300"
-          }`}
-        >
-          {data.label}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-xs rounded-md p-2 opacity-0 group-hover/node:opacity-100 transition-opacity pointer-events-none z-10">
-            <strong>Account:</strong> {data.label}
-            <br />
-            <strong>Status:</strong>{" "}
-            {data.isExit ? "Predicted Exit Point" : "Mule Account"}
-          </div>
-        </div>
-      ),
-    }),
-    []
-  );
-  useEffect(() => {
-    mockApiService.fetchTransactions().then((data) => {
-      const fraudTxns = data.filter((t) => t.is_fraud_network);
-      const accountSet = new Set();
-      fraudTxns.forEach((t) => {
-        accountSet.add(t.source);
-        accountSet.add(t.destination);
-      });
-      const initialNodes = Array.from(accountSet).map((acc, i) => ({
-        id: acc,
-        position: {
-          x: (i % 4) * 250 + Math.random() * 50,
-          y: Math.floor(i / 4) * 150 + Math.random() * 50,
-        },
-        data: { label: acc, isExit: acc === "ACC_EXIT_POINT" },
-        type: "custom",
-      }));
-      const initialEdges = fraudTxns.map((t) => ({
-        id: t.id,
-        source: t.source,
-        target: t.destination,
-        animated: true,
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#dc2626" },
-        style: { stroke: "#dc2626", strokeWidth: 1.5 },
-      }));
-      setNodes(initialNodes);
-      setEdges(initialEdges);
-      setStats({
-        accounts: accountSet.size,
-        edges: fraudTxns.length,
-        density: (fraudTxns.length / accountSet.size).toFixed(2),
-        fraudNodes: accountSet.size,
-      });
-    });
-  }, [refreshToken]);
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">
-          Nexus Map Visualizer
-        </h2>
-        <p className="text-sm text-slate-600">
-          Forensic graph analysis of high-risk transaction networks.
-        </p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Active Network Accounts"
-          value={stats.accounts}
-          icon={Users}
-        />
-        <KpiCard
-          title="High-Risk Connections"
-          value={stats.edges}
-          icon={Waypoints}
-        />
-        <KpiCard
-          title="Identified Fraud Nodes"
-          value={stats.fraudNodes}
-          icon={AlertTriangle}
-          colorClass="text-red-600"
-        />
-        <KpiCard title="Network Density" value={stats.density} icon={Zap} />
-      </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg h-[60vh]">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">
-          Live Network Graph
-        </p>
-        <GNNGraph nodes={nodes} edges={edges} />
-      </div>
-    </div>
-  );
-};
 
 const AuditLogsPage = ({ refreshToken }) => {
   const [logs, setLogs] = useState([]);
@@ -1168,7 +1310,7 @@ const AuditLogsPage = ({ refreshToken }) => {
   useEffect(() => {
     let active = true;
     setIsLoading(true);
-    mockApiService.fetchTransactions().then((data) => {
+    apiService.fetchTransactions().then((data) => {
       if (!active) return;
       const entries = data.slice(0, 30).map((txn) => ({
         id: `${txn.id}-${txn.timestamp}`,
@@ -1338,8 +1480,8 @@ const ManagerPortal = ({ user, onLogout }) => {
     try {
       const updated =
         action === "authorize"
-          ? await mockApiService.authorizeHold(selectedCase.id)
-          : await mockApiService.releaseFunds(selectedCase.id);
+          ? await apiService.authorizeHold(selectedCase.id)
+          : await apiService.releaseFunds(selectedCase.id);
       setSelectedCase(updated);
       setTimeout(() => {
         handleCloseCase();
@@ -1353,7 +1495,6 @@ const ManagerPortal = ({ user, onLogout }) => {
   const pageTitles = {
     dashboard: "Operational Dashboard",
     disruptions: "Active Disruptions",
-    map: "Nexus Map Visualizer",
     logs: "Audit & Compliance Logs",
     settings: "Portal Settings",
   };
@@ -1372,8 +1513,6 @@ const ManagerPortal = ({ user, onLogout }) => {
             refreshToken={refreshToken}
           />
         );
-      case "map":
-        return <NexusMapVisualizer refreshToken={refreshToken} />;
       case "logs":
         return <AuditLogsPage refreshToken={refreshToken} />;
       case "settings":
@@ -1426,13 +1565,6 @@ const ManagerPortal = ({ user, onLogout }) => {
             isExpanded={isSidebarExpanded}
             active={activePage === "disruptions"}
             onClick={() => setActivePage("disruptions")}
-          />
-          <NavItem
-            icon={<Waypoints size={20} />}
-            text="GNN Map"
-            isExpanded={isSidebarExpanded}
-            active={activePage === "map"}
-            onClick={() => setActivePage("map")}
           />
           <NavItem
             icon={<FileText size={20} />}
@@ -1495,3 +1627,4 @@ const ManagerPortal = ({ user, onLogout }) => {
 };
 
 export default ManagerPortal;
+

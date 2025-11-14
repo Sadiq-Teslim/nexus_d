@@ -1,5 +1,5 @@
 // src/portals/AdminPortal.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import logo from "../assets/nobglogo.png";
 import {
   Plus,
@@ -24,6 +24,15 @@ import {
   XCircle,
   Activity,
   BarChart3,
+  Send,
+  Play,
+  Copy,
+  RefreshCw,
+  Loader,
+  ArrowRight,
+  Database,
+  Server,
+  Workflow,
 } from "lucide-react";
 import {
   LineChart,
@@ -43,7 +52,6 @@ import {
   AreaChart,
 } from "recharts";
 
-// --- MOCK HOOKS & CONSTANTS ---
 const useAuth = () => ({ user: { email: "admin@premierbank.com" } });
 const NGN_FORMAT = new Intl.NumberFormat("en-NG", {
   style: "currency",
@@ -868,36 +876,30 @@ const AdminDashboard = () => {
 const BillingPage = () => {
   const [showCalculationModal, setShowCalculationModal] = useState(false);
   const [licenseYears, setLicenseYears] = useState(1);
-  const [licenseRemainingDays, setLicenseRemainingDays] = useState(245);
+  
+  // Pilot program: 6 weeks = 42 days
+  const PILOT_DURATION_DAYS = 42;
+  const [licenseRemainingDays, setLicenseRemainingDays] = useState(PILOT_DURATION_DAYS);
 
+  // Calculate expiry date from account creation (today)
+  const accountCreationDate = new Date();
   const licenseExpiryDate = new Date();
-  licenseExpiryDate.setDate(
-    licenseExpiryDate.getDate() + licenseRemainingDays
-  );
-  const totalLicenseDays = 365;
-  const licenseProgress = (licenseRemainingDays / totalLicenseDays) * 100;
+  licenseExpiryDate.setDate(accountCreationDate.getDate() + PILOT_DURATION_DAYS);
+  
+  // Calculate days remaining from today
+  const today = new Date();
+  const daysRemaining = Math.max(0, Math.ceil((licenseExpiryDate - today) / (1000 * 60 * 60 * 24)));
+  
+  const totalLicenseDays = PILOT_DURATION_DAYS;
+  const licenseProgress = (daysRemaining / totalLicenseDays) * 100;
 
   const licenseHistory = [
     {
-      date: "2024-11-15",
-      transaction: "License Purchase - 2 Years",
-      amount: 19000000,
-      duration: "2 Years",
+      date: accountCreationDate.toISOString().split('T')[0],
+      transaction: "Pilot Program License - 6 Weeks",
+      amount: 2500000,
+      duration: "6 Weeks",
       status: "Active",
-    },
-    {
-      date: "2023-11-15",
-      transaction: "Initial License Purchase - 1 Year",
-      amount: 10000000,
-      duration: "1 Year",
-      status: "Expired",
-    },
-    {
-      date: "2022-11-15",
-      transaction: "License Renewal - 1 Year",
-      amount: 10000000,
-      duration: "1 Year",
-      status: "Expired",
     },
   ];
 
@@ -905,17 +907,17 @@ const BillingPage = () => {
     console.log(
       `Purchasing ${years} year(s) license for ${NGN_FORMAT.format(price)}`
     );
+    // When purchasing full license, add years to current expiry date
     setLicenseRemainingDays(licenseRemainingDays + years * 365);
   };
 
   const getTimeRemainingLabel = () => {
-    const months = Math.floor(licenseRemainingDays / 30);
-    const days = licenseRemainingDays % 30;
-    if (months > 0) {
-      return `${months} ${months === 1 ? "month" : "months"} ${days > 0 ? `and ${days} ${days === 1 ? "day" : "days"}` : ""
-        }`;
+    const weeks = Math.floor(daysRemaining / 7);
+    const days = daysRemaining % 7;
+    if (weeks > 0) {
+      return `${weeks} ${weeks === 1 ? "week" : "weeks"}${days > 0 ? ` and ${days} ${days === 1 ? "day" : "days"}` : ""}`;
     }
-    return `${days} ${days === 1 ? "day" : "days"}`;
+    return `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"}`;
   };
 
   return (
@@ -926,38 +928,38 @@ const BillingPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <KpiCard
           title="License Status"
-          value="Active"
+          value="Pilot Program"
           subtitle={`Expires: ${licenseExpiryDate.toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
             year: "numeric",
           })}`}
           icon={ShieldCheck}
-          colorClass="text-green-600"
+          colorClass="text-blue-600"
         />
         <KpiCard
           title="Time Remaining"
           value={getTimeRemainingLabel()}
-          subtitle={`${licenseRemainingDays} days left`}
+          subtitle={`${daysRemaining} days left in pilot`}
           icon={TrendingUp}
           colorClass="text-blue-600"
         />
         <KpiCard
-          title="Annual License Fee"
-          value={NGN_FORMAT.format(10000000)}
-          subtitle="Per year"
+          title="Pilot Program Fee"
+          value={NGN_FORMAT.format(2500000)}
+          subtitle="6 weeks access"
           icon={Wallet}
-          colorClass="text-red-600"
+          colorClass="text-blue-600"
         />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-slate-800">
-            License Time Remaining
+            Pilot Program Time Remaining
           </h3>
           <span className="text-sm font-medium text-slate-600">
-            {licenseRemainingDays} / {totalLicenseDays} days
+            {daysRemaining} / {totalLicenseDays} days
           </span>
         </div>
         <div className="relative">
@@ -965,42 +967,46 @@ const BillingPage = () => {
             type="range"
             min="0"
             max={totalLicenseDays}
-            value={licenseRemainingDays}
+            value={daysRemaining}
             readOnly
-            className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+            className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             style={{
-              background: `linear-gradient(to right, #dc2626 0%, #dc2626 ${licenseProgress}%, #e2e8f0 ${licenseProgress}%, #e2e8f0 100%)`,
+              background: `linear-gradient(to right, #2563eb 0%, #2563eb ${licenseProgress}%, #e2e8f0 ${licenseProgress}%, #e2e8f0 100%)`,
             }}
           />
           <div className="flex justify-between mt-2 text-xs text-slate-500">
             <span>Expired</span>
-            <span className="font-semibold text-red-600">
+            <span className="font-semibold text-blue-600">
               {Math.round(licenseProgress)}% Remaining
             </span>
-            <span>Full Year</span>
+            <span>Full Period</span>
           </div>
         </div>
-        <div className="mt-4 p-4 bg-slate-50 rounded-lg">
-          <p className="text-sm text-slate-600">
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-slate-700">
             <span className="font-semibold text-slate-900">
               Current Status:
             </span>{" "}
-            Your license is active and will expire on{" "}
-            <span className="font-semibold text-red-600">
+            You are currently on a <span className="font-semibold text-blue-600">6-week pilot program</span> that will expire on{" "}
+            <span className="font-semibold text-blue-600">
               {licenseExpiryDate.toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               })}
             </span>
+            . Upgrade to a full annual license below to continue using the platform.
           </p>
         </div>
       </div>
 
       <div>
         <h3 className="text-2xl font-bold pt-4 text-slate-800">
-          License Purchase
+          Upgrade to Full License
         </h3>
+        <p className="text-sm text-slate-600 mt-2 mb-6">
+          Your pilot program expires soon. Upgrade to a full annual license to continue using Nexus Disrupt™ Platform.
+        </p>
         <div className="mt-6">
           <div className="rounded-2xl border-4 border-red-600 bg-slate-50 p-8 shadow-xl text-center flex flex-col">
             <h4 className="text-3xl font-extrabold mb-2 text-slate-800">
@@ -1033,7 +1039,7 @@ const BillingPage = () => {
 
       <div>
         <h3 className="text-xl font-bold pt-4 text-slate-800">
-          Recent License & Billing History
+          License & Billing History
         </h3>
         <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden mt-6">
           <table className="min-w-full divide-y divide-slate-200">
@@ -1077,7 +1083,7 @@ const BillingPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${item.status === "Active"
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-blue-100 text-blue-700"
                           : "bg-slate-100 text-slate-600"
                         }`}
                     >
@@ -1194,158 +1200,498 @@ const UserManagement = () => {
 };
 
 const ApiDocs = () => {
-  const CodeSnippet = ({ children, lang }) => (
-    <pre
-      className={`language-${lang} mt-2 rounded-xl bg-slate-900 p-4 text-xs text-white/80 overflow-auto font-mono`}
-    >
-      {children}
-    </pre>
-  );
-  const CodeBlock = ({
-    title,
-    method,
-    endpoint,
-    description,
-    children,
-    requiredResponse,
-    securityNote,
-  }) => (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 space-y-4 shadow-lg">
-      <span className="text-xs font-semibold uppercase tracking-widest text-red-600">
-        {title}
-      </span>
-      <h3 className="mt-1 text-xl font-semibold text-slate-800">
-        {description}
-      </h3>
-      <div className="bg-slate-800 p-4 rounded-lg">
-        <code
-          className={`text-sm font-mono ${method === "POST" ? "text-green-400" : "text-blue-400"
-            }`}
-        >
-          {method} {endpoint}
-        </code>
+  const [apiKey] = useState("bank_a_test123");
+  const [baseUrl] = useState("https://api.nexusdisrupt.com");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [submitResponse, setSubmitResponse] = useState(null);
+  const [resultResponse, setResultResponse] = useState(null);
+  const [transactionId, setTransactionId] = useState("");
+  const [requestPayload, setRequestPayload] = useState(`{
+  "amount": 50000,
+  "sender": "ACC123456",
+  "receiver": "ACC789012",
+  "currency": "USD",
+  "timestamp": "${new Date().toISOString()}"
+}`);
+
+  const CodeSnippet = ({ children, lang, copyable = false }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+      navigator.clipboard.writeText(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+      <div className="relative">
+        {copyable && (
+          <button
+            onClick={handleCopy}
+            className="absolute top-2 right-2 p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+            title="Copy to clipboard"
+          >
+            {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
+          </button>
+        )}
+        <pre className={`language-${lang} mt-2 rounded-xl bg-slate-900 p-4 text-xs text-white/80 overflow-auto font-mono ${copyable ? "pr-12" : ""}`}>
+          {children}
+        </pre>
       </div>
-      {securityNote && (
-        <p className="text-sm italic text-slate-500">{securityNote}</p>
-      )}
-      <p className="text-sm font-medium text-slate-700 mt-4">
-        Request Body Payload (JSON)
-      </p>
-      <CodeSnippet lang="json">{children}</CodeSnippet>
-      {requiredResponse && (
-        <>
-          <p className="text-sm font-medium text-slate-700 pt-3">
-            Expected Successful Response (200 OK)
-          </p>
-          <CodeSnippet lang="json">{requiredResponse}</CodeSnippet>
-        </>
-      )}
+    );
+  };
+
+  const handleSubmitTransaction = async () => {
+    setIsSubmitting(true);
+    setSubmitResponse(null);
+    
+    try {
+      const payload = JSON.parse(requestPayload);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const response = {
+        transactionId: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        status: "queued"
+      };
+      
+      setSubmitResponse({
+        status: 202,
+        data: response
+      });
+      setTransactionId(response.transactionId);
+    } catch (error) {
+      setSubmitResponse({
+        status: 400,
+        error: "Invalid JSON payload. Please check your request body."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGetResult = async () => {
+    if (!transactionId) {
+      setResultResponse({
+        status: 400,
+        error: "Please submit a transaction first to get a transaction ID."
+      });
+      return;
+    }
+
+    setIsFetching(true);
+    setResultResponse(null);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const parsedPayload = JSON.parse(requestPayload);
+      const gnnScore = 0.87;
+      const fraudScore = gnnScore;
+      const regulatoryPenalty = Math.round(gnnScore * 100000);
+      const reputationalDamageScore = (gnnScore * 45).toFixed(1);
+      const impactLevel = gnnScore >= 0.85 ? "HIGH" : gnnScore >= 0.70 ? "MEDIUM" : "LOW";
+      
+      const result = {
+        transactionId: transactionId,
+        status: "completed",
+        timestamp: new Date().toISOString(),
+        transaction: {
+          amount: parsedPayload.amount,
+          sender: parsedPayload.sender,
+          receiver: parsedPayload.receiver,
+          currency: parsedPayload.currency || "USD",
+          timestamp: parsedPayload.timestamp
+        },
+        analysis: {
+          gnnScore: gnnScore,
+          fraudScore: fraudScore,
+          riskLevel: gnnScore >= 0.90 ? "CRITICAL" : gnnScore >= 0.85 ? "HIGH" : gnnScore >= 0.70 ? "MEDIUM" : "LOW",
+          confidence: Math.round(gnnScore * 100)
+        },
+        cdt: {
+          regulatoryPenalty: regulatoryPenalty,
+          reputationalDamageScore: parseFloat(reputationalDamageScore),
+          impactLevel: impactLevel,
+          estimatedLoss: Math.round(gnnScore * parsedPayload.amount * 0.5)
+        },
+        ccn: {
+          ccnId: `CCN-${new Date().toISOString().split('T')[0].replace(/-/g, '')}-${transactionId.slice(-3).toUpperCase()}`,
+          reportType: gnnScore >= 0.85 ? "SAR" : "STR",
+          riskScore: Math.round(gnnScore * 100),
+          indicators: gnnScore >= 0.85 
+            ? ["Structuring", "Unusual Activity Pattern", "Network Analysis Flag", "High-Risk Geographic Location"]
+            : ["Unusual Activity Pattern", "Transaction Amount Anomaly"],
+          narrative: `Transaction ${parsedPayload.sender} → ${parsedPayload.receiver} exhibits ${gnnScore >= 0.85 ? "multiple high-risk indicators" : "suspicious activity patterns"}. GNN analysis indicates ${Math.round(gnnScore * 100)}% confidence of fraudulent activity. The transaction pattern suggests potential money laundering activities with a ${impactLevel.toLowerCase()} risk profile. Regulatory penalty estimated at ${parsedPayload.currency || "USD"} ${regulatoryPenalty.toLocaleString()}. Reputational damage score: ${reputationalDamageScore} (${impactLevel} impact). Immediate regulatory review recommended.`,
+          dateGenerated: new Date().toISOString()
+        }
+      };
+      
+      setResultResponse({
+        status: 200,
+        data: result
+      });
+    } catch (error) {
+      setResultResponse({
+        status: 500,
+        error: "Failed to fetch result. Please try again."
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const ArchitectureFlow = () => (
+    <div className="rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 shadow-lg">
+      <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+        <Workflow size={24} className="text-red-600" />
+        System Architecture Flow
+      </h3>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center border-2 border-blue-300">
+              <Server size={24} className="text-blue-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">Bank Request</span>
+          </div>
+          <ArrowRight className="text-slate-400" size={24} />
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="w-16 h-16 rounded-xl bg-green-100 flex items-center justify-center border-2 border-green-300">
+              <Server size={24} className="text-green-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">API Server</span>
+          </div>
+          <ArrowRight className="text-slate-400" size={24} />
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="w-16 h-16 rounded-xl bg-yellow-100 flex items-center justify-center border-2 border-yellow-300">
+              <Activity size={24} className="text-yellow-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">BullMQ Queue</span>
+          </div>
+          <ArrowRight className="text-slate-400" size={24} />
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="w-16 h-16 rounded-xl bg-purple-100 flex items-center justify-center border-2 border-purple-300">
+              <Cpu size={24} className="text-purple-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">Worker</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 mt-8">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center border-2 border-indigo-300">
+              <Database size={24} className="text-indigo-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">PostgreSQL</span>
+            <span className="text-xs text-slate-500 text-center">Results Storage</span>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-xl bg-red-100 flex items-center justify-center border-2 border-red-300">
+              <Zap size={24} className="text-red-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-700">GNN + CDT + LLM</span>
+            <span className="text-xs text-slate-500 text-center">AI Processing</span>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="text-green-600 mt-0.5" size={20} />
+            <div>
+              <p className="text-sm font-semibold text-green-900 mb-1">System Status: Operational</p>
+              <ul className="text-xs text-green-700 space-y-1">
+                <li>✅ API key authentication</li>
+                <li>✅ Asynchronous transaction processing</li>
+                <li>✅ Background job queue with BullMQ</li>
+                <li>✅ GNN fraud scoring engine</li>
+                <li>✅ CDT impact calculation</li>
+                <li>✅ CCN compliance report generation</li>
+                <li>✅ Result retrieval and storage</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-semibold text-slate-900">
-          API Integration Documentation
+        <h2 className="text-3xl font-bold text-slate-900">
+          Developer Sandbox
         </h2>
-        <p className="text-sm text-slate-600">
-          Technical blueprint for securely integrating your core systems with
-          Nexus Disrupt™. All communications must use **Mutual TLS (mTLS)**.
+        <p className="text-sm text-slate-600 mt-2">
+          Interactive testing environment for the Nexus Disrupt™ API. Test transactions, view results, and understand the system architecture.
         </p>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr,2fr] gap-8">
-        <div className="lg:sticky top-24 self-start">
-          <h3 className="font-semibold text-slate-800 mb-4">
-            Integration Steps
-          </h3>
-          <ul className="space-y-2 text-sm text-slate-500">
-            <li>
-              <a href="#security" className="hover:text-red-600">
-                1. Authentication
-              </a>
-            </li>
-            <li>
-              <a href="#inbound" className="hover:text-red-600">
-                2. Inbound Data Stream
-              </a>
-            </li>
-            <li>
-              <a href="#outbound" className="hover:text-red-600">
-                3. Outbound Webhook
-              </a>
-            </li>
-            <li>
-              <a href="#examples" className="hover:text-red-600">
-                4. Code Examples
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div className="space-y-12">
-          <section id="security">
-            <h3 className="text-xl font-semibold text-slate-800 border-b border-slate-300 pb-2 mb-4">
-              Security Protocol & Authentication
-            </h3>
-            <p className="text-sm text-slate-600">
-              You must send your API Key as a Bearer Token in the
-              `Authorization` header for every request.
-            </p>
-            <CodeSnippet lang="http">{`Authorization: Bearer <YOUR_API_KEY>\nContent-Type: application/json`}</CodeSnippet>
-          </section>
-          <section id="inbound">
-            <CodeBlock
-              title="DATA INGESTION (INBOUND)"
-              method="POST"
-              endpoint="/v1/transactions/stream"
-              description="Push high-risk transactions for GNN analysis."
-              securityNote="Credit Consumption: 1 Credit is consumed per transaction processed by the GNN."
-              requiredResponse={`{\n  "status": "ACCEPTED",\n  "credit_balance_remaining": 28500\n}`}
-            >{`{\n  "transaction_id": "TXN_987654321",\n  "timestamp": "2025-11-10T14:30:00Z",\n  "source_account": "ACC_STOLEN_001",\n  "destination_account": "ACC_MULE_22A",\n  "amount": 4500000.00\n}`}</CodeBlock>
-          </section>
-          <section id="outbound">
-            <CodeBlock
-              title="AI DISRUPTION (OUTBOUND HOOK)"
-              method="POST"
-              endpoint="/hooks/nexus-disrupt/freeze"
-              description="Expose this endpoint for our Agentic AI to trigger the Micro-Freeze."
-              securityNote="This endpoint must respond within 500ms."
-              requiredResponse={`{\n  "status": "SUCCESS",\n  "freeze_status": "PENDING_FORMAL_HOLD"\n}`}
-            >{`{\n  "transaction_id": "TXN_987654321",\n  "account_id": "ACC_MULE_22A",\n  "incident_id": "CASE_ND_2025_001",\n  "ccnm_summary": "Network structure violation..."\n}`}</CodeBlock>
-          </section>
-          <section id="examples">
-            <h3 className="text-xl font-semibold text-slate-800 border-b border-slate-300 pb-2 mb-4">
-              Implementation Examples
-            </h3>
-            <p className="text-sm text-slate-600 mb-4">
-              Quick start examples for integrating the inbound transaction
-              stream.
-            </p>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-lg">
-              <h4 className="font-semibold text-slate-700">
-                Node.js Example (using Axios)
-              </h4>
-              <CodeSnippet lang="javascript">{`const axios = require('axios');
 
-async function streamTransaction(transactionData) {
-  try {
-    const response = await axios.post(
-      'https://api.nexusdisrupt.com/v1/transactions/stream',
-      transactionData,
-      {
-        headers: {
-          'Authorization': \`Bearer \${process.env.NEXUS_API_KEY}\`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    console.log('API Response:', response.data);
-  } catch (error) {
-    console.error('Error streaming transaction:', error.response.data);
+      <ArchitectureFlow />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Submit Transaction Section */}
+        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Send size={20} className="text-green-600" />
+                Submit Transaction
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">POST /transactions</p>
+            </div>
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+              POST
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">
+                Request Payload (JSON)
+              </label>
+              <textarea
+                value={requestPayload}
+                onChange={(e) => setRequestPayload(e.target.value)}
+                className="w-full h-40 p-4 rounded-lg bg-slate-900 text-green-400 font-mono text-xs border-2 border-slate-300 focus:border-red-500 focus:outline-none resize-none"
+                placeholder="Enter JSON payload..."
+              />
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <p className="text-xs font-semibold text-slate-600 mb-1">Headers:</p>
+              <CodeSnippet lang="http" copyable>{`x-api-key: ${apiKey}`}</CodeSnippet>
+            </div>
+
+            <button
+              onClick={handleSubmitTransaction}
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition-colors"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Play size={18} />
+                  Submit Transaction
+                </>
+              )}
+            </button>
+
+            {submitResponse && (
+              <div className={`p-4 rounded-lg border-2 ${
+                submitResponse.status === 202 
+                  ? "bg-green-50 border-green-200" 
+                  : "bg-red-50 border-red-200"
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {submitResponse.status === 202 ? (
+                    <CheckCircle className="text-green-600" size={18} />
+                  ) : (
+                    <XCircle className="text-red-600" size={18} />
+                  )}
+                  <span className="font-semibold text-slate-900">
+                    Response {submitResponse.status}
+                  </span>
+                </div>
+                <CodeSnippet lang="json" copyable>
+                  {submitResponse.data 
+                    ? JSON.stringify(submitResponse.data, null, 2)
+                    : submitResponse.error}
+                </CodeSnippet>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Get Result Section */}
+        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <RefreshCw size={20} className="text-blue-600" />
+                Get Result
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">GET /transactions/:id/result</p>
+            </div>
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+              GET
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">
+                Transaction ID
+              </label>
+              <input
+                type="text"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="Enter transaction ID or submit a transaction first"
+                className="w-full p-3 rounded-lg bg-slate-50 border-2 border-slate-300 focus:border-blue-500 focus:outline-none font-mono text-sm"
+              />
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <p className="text-xs font-semibold text-slate-600 mb-1">Headers:</p>
+              <CodeSnippet lang="http" copyable>{`x-api-key: ${apiKey}`}</CodeSnippet>
+            </div>
+
+            <button
+              onClick={handleGetResult}
+              disabled={isFetching || !transactionId}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition-colors"
+            >
+              {isFetching ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  Fetching Result...
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={18} />
+                  Get Result
+                </>
+              )}
+            </button>
+
+            {resultResponse && (
+              <div className={`p-4 rounded-lg border-2 ${
+                resultResponse.status === 200 
+                  ? "bg-blue-50 border-blue-200" 
+                  : "bg-red-50 border-red-200"
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {resultResponse.status === 200 ? (
+                    <CheckCircle className="text-blue-600" size={18} />
+                  ) : (
+                    <XCircle className="text-red-600" size={18} />
+                  )}
+                  <span className="font-semibold text-slate-900">
+                    Response {resultResponse.status}
+                  </span>
+                </div>
+                <CodeSnippet lang="json" copyable>
+                  {resultResponse.data 
+                    ? JSON.stringify(resultResponse.data, null, 2)
+                    : resultResponse.error}
+                </CodeSnippet>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Code Examples Section */}
+      <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg">
+        <h3 className="text-xl font-bold text-slate-900 mb-4">Code Examples</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <FileText size={16} />
+              cURL Example
+            </h4>
+            <CodeSnippet lang="bash" copyable>{`curl -X POST ${baseUrl}/transactions \\
+  -H "x-api-key: ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "amount": 50000,
+    "sender": "ACC123456",
+    "receiver": "ACC789012",
+    "currency": "USD",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }'`}</CodeSnippet>
+          </div>
+          <div>
+            <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <FileText size={16} />
+              JavaScript (Fetch)
+            </h4>
+            <CodeSnippet lang="javascript" copyable>{`const response = await fetch('${baseUrl}/transactions', {
+  method: 'POST',
+  headers: {
+    'x-api-key': '${apiKey}',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    amount: 50000,
+    sender: 'ACC123456',
+    receiver: 'ACC789012',
+    currency: 'USD',
+    timestamp: new Date().toISOString()
+  })
+});
+
+const data = await response.json();
+console.log(data);`}</CodeSnippet>
+          </div>
+        </div>
+      </div>
+
+      {/* API Documentation */}
+      <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-6 shadow-lg">
+        <h3 className="text-xl font-bold text-slate-900 mb-4">API Endpoint Details</h3>
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">POST</span>
+              <code className="text-sm font-mono text-slate-900">/transactions</code>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">Submit a transaction for fraud analysis. Returns a transaction ID and queued status.</p>
+            <div className="text-xs text-slate-500">
+              <p className="font-semibold mb-1">Response: 202 Accepted</p>
+              <CodeSnippet lang="json">{`{
+  "transactionId": "uuid",
+  "status": "queued"
+}`}</CodeSnippet>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">GET</span>
+              <code className="text-sm font-mono text-slate-900">/transactions/:id/result</code>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">Retrieve the fraud analysis result for a submitted transaction.</p>
+            <div className="text-xs text-slate-500">
+              <p className="font-semibold mb-1">Response: 200 OK</p>
+              <CodeSnippet lang="json">{`{
+  "transactionId": "uuid",
+  "status": "completed",
+  "timestamp": "2024-01-15T10:35:00Z",
+  "transaction": {
+    "amount": 50000,
+    "sender": "ACC123456",
+    "receiver": "ACC789012",
+    "currency": "USD",
+    "timestamp": "2024-01-15T10:30:00Z"
+  },
+  "analysis": {
+    "gnnScore": 0.87,
+    "fraudScore": 0.87,
+    "riskLevel": "HIGH",
+    "confidence": 87
+  },
+  "cdt": {
+    "regulatoryPenalty": 87000,
+    "reputationalDamageScore": 39.2,
+    "impactLevel": "HIGH",
+    "estimatedLoss": 21750
+  },
+  "ccn": {
+    "ccnId": "CCN-20240115-ABC",
+    "reportType": "SAR",
+    "riskScore": 87,
+    "indicators": ["Structuring", "Unusual Activity Pattern"],
+    "narrative": "Transaction analysis report...",
+    "dateGenerated": "2024-01-15T10:35:00Z"
   }
 }`}</CodeSnippet>
             </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>
